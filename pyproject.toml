@@ -1,0 +1,97 @@
+[project]
+name = "bada"
+version = "0.1.0"
+description = "Package for analysis of biophysical assays, such as DSF"
+readme = "README.md"
+authors = [
+    { name = "Willi Gottstein", email = "willi.gottstein@gmail.com" }
+]
+requires-python = ">=3.12"
+dependencies = [
+    "dtaidistance>=2.3.13",
+    "numpy>=2.2.3",
+    "pandas>=2.2.3",
+    "pandera>=0.23.0",
+    "plotly>=6.0.0",
+    "scipy>=1.15.2",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[dependency-groups]
+dev = [
+    "bandit>=1.8.3",
+    "pyright>=1.1.396",
+    "pytest-cov>=6.0.0",
+    "pytest-mock>=3.14.0",
+    "pytest>=8.3.5",
+    "ruff>=0.9.9",
+]
+
+# Pyright configuration
+[tool.pyright]
+include = ["src"]
+exclude = [".venv"]
+venvPath = "."
+venv = ".venv"
+reportMissingImports = true
+reportMissingTypeStubs = false
+pythonVersion = "3.13"
+typeCheckingMode = "basic"
+
+
+# Ruff configuration
+[tool.ruff]
+# Enable all recommended rules by default plus import sorting
+lint.select = ["E", "F", "I"]
+lint.fixable = ["I"]  # Ensure import sorting is auto-fixed
+lint.extend-fixable = ["I"]  # Add import sorting to fixable rules
+# Same as Black
+line-length = 100
+
+# Automatically fix import sorting
+fix = true  # Enable auto-fixing by default
+
+# Exclude a variety of commonly ignored directories
+exclude = [
+    ".bzr",
+    ".direnv",
+    ".eggs",
+    ".git",
+    ".git-rewrite",
+    ".hg",
+    ".mypy_cache",
+    ".nox",
+    ".pants.d",
+    ".pytype",
+    ".ruff_cache",
+    ".svn",
+    ".tox",
+    ".venv",
+    "__pypackages__",
+    "_build",
+    "buck-out",
+    "build",
+    "dist",
+    "node_modules",
+    "venv",
+]
+
+# Allow unused imports in __init__.py files
+[tool.ruff.lint.per-file-ignores]
+"__init__.py" = ["F401"]  # F401 = Module imported but unused
+
+# Sort imports configuration
+[tool.ruff.lint.isort]
+known-first-party = ["bada"]
+force-sort-within-sections = true
+combine-as-imports = true
+
+# Enable formatting
+[tool.ruff.format]
+skip-magic-trailing-comma = false
+quote-style = "double"
+indent-style = "space"
+line-ending = "auto"
