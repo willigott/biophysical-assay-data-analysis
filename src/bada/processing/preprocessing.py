@@ -6,7 +6,7 @@ from scipy.interpolate import UnivariateSpline
 
 def get_normalized_signal(signal: np.ndarray | pd.Series) -> np.ndarray:
     """Normalize signal to [0,1] range"""
-    
+
     return (signal - np.min(signal)) / (np.max(signal) - np.min(signal))
 
 
@@ -20,13 +20,13 @@ def get_spline(
     spline = UnivariateSpline(x, y, s=smoothing)
     x_spline = np.linspace(min(x), max(x), n_points)
     y_spline = np.asarray(spline(x_spline))
-    
+
     return (spline, x_spline, y_spline)
 
 
 def get_spline_derivative(spline: UnivariateSpline, x_spline: np.ndarray) -> np.ndarray:
     """Get derivative of spline"""
-    
+
     return np.asarray(spline.derivative()(x_spline))
 
 
@@ -34,7 +34,7 @@ def _get_dtw_distance_unnormalized(
     signal1: np.ndarray | pd.Series, signal2: np.ndarray | pd.Series
 ) -> float:
     """Calculate DTW distance between two signals"""
-    
+
     return float(dtw.distance(signal1, signal2))
 
 
@@ -44,7 +44,7 @@ def _get_dtw_distance_normalized(
     """Calculate DTW distance between two normalized signals"""
     norm_signal1 = get_normalized_signal(signal1)
     norm_signal2 = get_normalized_signal(signal2)
-    
+
     return float(dtw.distance(norm_signal1, norm_signal2))
 
 
