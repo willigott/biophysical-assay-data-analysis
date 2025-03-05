@@ -30,7 +30,6 @@ dev = [
     "ruff>=0.9.9",
 ]
 
-# Pyright configuration
 [tool.pyright]
 include = ["src"]
 exclude = [".venv"]
@@ -42,19 +41,13 @@ pythonVersion = "3.13"
 typeCheckingMode = "basic"
 
 
-# Ruff configuration
 [tool.ruff]
-# Enable all recommended rules by default plus import sorting
 lint.select = ["E", "F", "I"]
-lint.fixable = ["I"]  # Ensure import sorting is auto-fixed
-lint.extend-fixable = ["I"]  # Add import sorting to fixable rules
-# Same as Black
+lint.fixable = ["I"]
+lint.extend-fixable = ["I"]
 line-length = 100
+fix = true
 
-# Automatically fix import sorting
-fix = true  # Enable auto-fixing by default
-
-# Exclude a variety of commonly ignored directories
 exclude = [
     ".bzr",
     ".direnv",
@@ -79,17 +72,14 @@ exclude = [
     "venv",
 ]
 
-# Allow unused imports in __init__.py files
 [tool.ruff.lint.per-file-ignores]
-"__init__.py" = ["F401"]  # F401 = Module imported but unused
+"__init__.py" = ["F401"]
 
-# Sort imports configuration
 [tool.ruff.lint.isort]
 known-first-party = ["bada"]
 force-sort-within-sections = true
 combine-as-imports = true
 
-# Enable formatting
 [tool.ruff.format]
 skip-magic-trailing-comma = false
 quote-style = "double"

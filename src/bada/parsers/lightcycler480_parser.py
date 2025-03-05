@@ -25,10 +25,7 @@ class LightCycler480Parser(BaseParser):
         temp_cols = df.columns[::2]
         fluor_cols = df.columns[1::2]
 
-        # Melt temperature columns
         temp_df = df[temp_cols].melt(var_name="well_position", value_name="temperature")
-
-        # Melt fluorescence columns
         fluor_df = df[fluor_cols].melt(var_name="well_position", value_name="fluorescence")
 
         df_stacked = pd.concat(
