@@ -39,38 +39,38 @@ jobs:
           retention-days: 7
 
 
-  publish-testpypi:
-    name: Publish to TestPyPI
-    needs: [build]
-    runs-on: ubuntu-latest
-    environment: release-testpypi
-    permissions:
-      id-token: write  # Required for trusted publishing
-    steps:
-      - uses: actions/checkout@v4
-      - uses: ./.github/actions/setup
-      - name: Download built package
-        uses: actions/download-artifact@v4
-        with:
-          name: dist
-          path: dist/
-      - name: Publish to TestPyPI
-        run: uv publish --repository https://test.pypi.org/legacy/ --no-build
+#   publish-testpypi:
+#     name: Publish to TestPyPI
+#     needs: [build]
+#     runs-on: ubuntu-latest
+#     environment: release-testpypi
+#     permissions:
+#       id-token: write  # Required for trusted publishing
+#     steps:
+#       - uses: actions/checkout@v4
+#       - uses: ./.github/actions/setup
+#       - name: Download built package
+#         uses: actions/download-artifact@v4
+#         with:
+#           name: dist
+#           path: dist/
+#       - name: Publish to TestPyPI
+#         run: uv publish --repository https://test.pypi.org/legacy/ --no-build
 
-  publish-pypi:
-    name: Publish to PyPI
-    needs: [publish-testpypi]
-    runs-on: ubuntu-latest
-    environment: release-pypi
-    permissions:
-      id-token: write  # Required for trusted publishing
-    steps:
-      - uses: actions/checkout@v4
-      - uses: ./.github/actions/setup
-      - name: Download built package
-        uses: actions/download-artifact@v4
-        with:
-          name: dist
-          path: dist/
-      - name: Publish to PyPI
-        run: uv publish --no-build
+#   publish-pypi:
+#     name: Publish to PyPI
+#     needs: [publish-testpypi]
+#     runs-on: ubuntu-latest
+#     environment: release-pypi
+#     permissions:
+#       id-token: write  # Required for trusted publishing
+#     steps:
+#       - uses: actions/checkout@v4
+#       - uses: ./.github/actions/setup
+#       - name: Download built package
+#         uses: actions/download-artifact@v4
+#         with:
+#           name: dist
+#           path: dist/
+#       - name: Publish to PyPI
+#         run: uv publish --no-build
