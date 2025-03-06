@@ -1,0 +1,40 @@
+name: Release
+
+on:
+  workflow_run:
+    workflows: ["Code Quality"]
+    types:
+      - completed
+    branches:
+      - main
+  release:
+    types: [published]
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  check-workflow-success:
+    runs-on: ubuntu-latest
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    steps:
+      - name: Code quality checks passed
+        run: echo "Code quality workflow completed successfully. Proceeding with build."
+
+  build:
+    name: Build Package
+    needs: [check-workflow-success]
+    # Only run for workflow_run events if the previous workflow succeeded
+    if: ${{ github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup
+      - run: uv build --no-sources
+      - name: Store built package
+        uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist/
+          retention-days: 7
+
