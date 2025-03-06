@@ -54,7 +54,7 @@ jobs:
           name: dist
           path: dist/
       - name: Publish to TestPyPI
-        run: uv publish --index testpypi --no-build
+        run: uv publish --index testpypi dist/*
 
 #   publish-pypi:
 #     name: Publish to PyPI
@@ -72,4 +72,4 @@ jobs:
 #           name: dist
 #           path: dist/
 #       - name: Publish to PyPI
-#         run: uv publish --no-build
+#         run: uv publish dist/*
