@@ -66,6 +66,8 @@ jobs:
 #     steps:
 #       - uses: actions/checkout@v4
 #       - uses: ./.github/actions/setup
+#       - name: Test installation from TestPyPi
+#         run: uv pip install -i https://test.pypi.org/pypi/ --extra-index-url https://pypi.org/simple bada
 #       - name: Download built package
 #         uses: actions/download-artifact@v4
 #         with:
