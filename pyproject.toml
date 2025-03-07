@@ -32,7 +32,7 @@ dev = [
 
 [[tool.uv.index]]
 name = "testpypi"
-url = "https://test.pypi.org/legacy/"  # pipeline fails when using /simple
+url = "https://test.pypi.org/project/bada"  # "https://test.pypi.org/legacy/"  # pipeline fails when using /simple
 publish-url = "https://test.pypi.org/legacy/"
 
 [tool.pyright]
