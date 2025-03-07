@@ -22,12 +22,12 @@ build-backend = "hatchling.build"
 
 [dependency-groups]
 dev = [
-    "bandit>=1.8.3",
     "pyright>=1.1.396",
     "pytest-cov>=6.0.0",
     "pytest-mock>=3.14.0",
     "pytest>=8.3.5",
     "ruff>=0.9.9",
+    "pre-commit>=4.1.0",
 ]
 
 [[tool.uv.index]]
