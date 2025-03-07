@@ -51,8 +51,8 @@ venv.bak/
 
 # Jupyter Notebook
 .ipynb_checkpoints
+*.ipynb
 
-# pyenv
 .python-version
 
 # Unit test / coverage reports
