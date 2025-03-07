@@ -54,7 +54,7 @@ jobs:
           name: dist
           path: dist/
       - name: Publish to TestPyPI
-        run: uv publish --index testpypi dist/*
+        run: uv publish --check-url https://test.pypi.org/legacy/ --index testpypi dist/*
 
 #   publish-pypi:
 #     name: Publish to PyPI
@@ -67,7 +67,7 @@ jobs:
 #       - uses: actions/checkout@v4
 #       - uses: ./.github/actions/setup
 #       - name: Test installation from TestPyPi
-#         run: uv pip install -i https://test.pypi.org/pypi/ --extra-index-url https://pypi.org/simple bada
+#         run: uv pip install -i https://test.pypi.org/simple/ --extra-index-url https://pypi.org/simple bada
 #       - name: Download built package
 #         uses: actions/download-artifact@v4
 #         with:
