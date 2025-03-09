@@ -1,8 +1,11 @@
+from typing import Optional
+
 import numpy as np
 import pandas as pd
 from scipy.interpolate import UnivariateSpline
 
-from .preprocessing import get_spline, get_spline_derivative
+from bada.processing.preprocessing import get_spline, get_spline_derivative
+from bada.utils.validation import validate_temperature_range
 
 
 def get_min_max_values(
@@ -45,3 +48,79 @@ def get_tm(
     max_derivative_value, tm = _get_max_derivative(spline, x_spline)
 
     return tm, max_derivative_value
+
+
+def get_dsf_curve_features(
+    data: pd.DataFrame,
+    min_temp: Optional[float] = None,
+    max_temp: Optional[float] = None,
+    smoothing: float = 0.01,
+    avg_control_tm: Optional[float] = None,
+) -> dict[str, float | pd.DataFrame | np.ndarray]:
+    """
+    Analyze the data for a single well.
+
+    Args:
+        data (pd.DataFrame): Dataset pre-filtered for a single well
+        min_temp (float, optional): Minimum temperature for analysis range
+        max_temp (float, optional): Maximum temperature for analysis range
+        smoothing (float, default=0.01): Smoothing factor for spline fitting
+        avg_control_tm (float, optional): Average Tm of control wells
+
+    Returns:
+        dict: Dictionary containing analysis results
+
+    Raises:
+        ValueError: If data contains more than one unique well position
+    """
+
+    if n_unique := data["well_position"].nunique() != 1:
+        raise ValueError(f"Data must contain exactly one well, but found {n_unique} wells")
+
+    min_fluorescence, max_fluorescence, temp_at_min, temp_at_max = get_min_max_values(
+        np.asarray(data["temperature"]), np.asarray(data["fluorescence"]), smoothing=smoothing
+    )
+
+    filtered_data = data.copy().reset_index(drop=True)
+    if min_temp is None:
+        min_temp = float(data["temperature"].min())
+    if max_temp is None:
+        max_temp = float(data["temperature"].max())
+
+    validate_temperature_range(min_temp, max_temp)
+
+    filtered_data = data[(data["temperature"] >= min_temp) & (data["temperature"] <= max_temp)]
+
+    spline, x_spline, y_spline = get_spline(
+        np.asarray(filtered_data["temperature"]),
+        np.asarray(filtered_data["fluorescence"]),
+        smoothing=smoothing,
+    )
+
+    y_spline_derivative = np.asarray(spline.derivative()(x_spline))
+    temp_at_max_derivative, max_derivative_value = get_tm(
+        np.asarray(filtered_data["temperature"]),
+        np.asarray(filtered_data["fluorescence"]),
+        smoothing=smoothing,
+    )
+
+    if avg_control_tm is not None:
+        delta_tm = temp_at_max_derivative - avg_control_tm
+    else:
+        delta_tm = np.nan
+
+    return {
+        "full_well_data": data,
+        "x_spline": x_spline,
+        "y_spline": y_spline,
+        "y_spline_derivative": y_spline_derivative,
+        "min_fluorescence": min_fluorescence,
+        "max_fluorescence": max_fluorescence,
+        "temp_at_min": temp_at_min,
+        "temp_at_max": temp_at_max,
+        "tm": temp_at_max_derivative,
+        "max_derivative_value": max_derivative_value,
+        "delta_tm": delta_tm,
+        "min_temp": min_temp,
+        "max_temp": max_temp,
+    }
