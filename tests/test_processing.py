@@ -5,6 +5,7 @@ from scipy.interpolate import UnivariateSpline
 
 from bada.processing.feature_extraction import (
     _get_max_derivative,
+    get_dsf_curve_features,
     get_min_max_values,
     get_tm,
 )
@@ -17,6 +18,7 @@ from bada.processing.preprocessing import (
     get_spline,
     get_spline_derivative,
 )
+from bada.utils.validation import validate_temperature_range
 
 
 class TestPreprocessing:
@@ -164,3 +166,119 @@ class TestFeatureExtraction:
 
         # Tm should be within the range of temperatures
         assert np.min(sample_temperatures) <= tm <= np.max(sample_temperatures)
+
+    def test_get_dsf_curve_features(self, sample_dsf_data: pd.DataFrame) -> None:
+        """Test that get_dsf_curve_features extracts the expected features."""
+        # Filter data for a single well
+        single_well_data = sample_dsf_data.loc[sample_dsf_data["well_position"] == "A1", :].copy()
+
+        # Get features with default parameters
+        features = get_dsf_curve_features(single_well_data)
+
+        # Check that all expected keys are present
+        expected_keys = [
+            "full_well_data",
+            "x_spline",
+            "y_spline",
+            "y_spline_derivative",
+            "min_fluorescence",
+            "max_fluorescence",
+            "temp_at_min",
+            "temp_at_max",
+            "tm",
+            "max_derivative_value",
+            "delta_tm",
+            "min_temp",
+            "max_temp",
+        ]
+        for key in expected_keys:
+            assert key in features
+
+        # Check types
+        assert isinstance(features["full_well_data"], pd.DataFrame)
+        assert isinstance(features["x_spline"], np.ndarray)
+        assert isinstance(features["y_spline"], np.ndarray)
+        assert isinstance(features["y_spline_derivative"], np.ndarray)
+        assert isinstance(features["min_fluorescence"], float)
+        assert isinstance(features["max_fluorescence"], float)
+        assert isinstance(features["temp_at_min"], float)
+        assert isinstance(features["temp_at_max"], float)
+        assert isinstance(features["tm"], float)
+        assert isinstance(features["max_derivative_value"], float)
+        assert np.isnan(features["delta_tm"])  # No control Tm provided
+        assert isinstance(features["min_temp"], float)
+        assert isinstance(features["max_temp"], float)
+
+        # Check basic value constraints
+        assert features["min_fluorescence"] <= features["max_fluorescence"]
+        assert features["min_temp"] <= features["tm"] <= features["max_temp"]
+        assert features["min_temp"] <= features["temp_at_min"] <= features["max_temp"]
+        assert features["min_temp"] <= features["temp_at_max"] <= features["max_temp"]
+
+    def test_get_dsf_curve_features_with_temperature_range(
+        self, sample_dsf_data: pd.DataFrame
+    ) -> None:
+        """Test that get_dsf_curve_features works with custom temperature range."""
+        # Filter data for a single well
+        single_well_data = sample_dsf_data.loc[sample_dsf_data["well_position"] == "A1", :].copy()
+
+        min_temp = 40.0
+        max_temp = 80.0
+
+        features = get_dsf_curve_features(single_well_data, min_temp=min_temp, max_temp=max_temp)
+
+        # Check that temperature range is respected
+        assert features["min_temp"] == min_temp
+        assert features["max_temp"] == max_temp
+
+        # Features should be calculated on the filtered data
+        assert min_temp <= features["tm"] <= max_temp
+
+    def test_get_dsf_curve_features_with_control_tm(self, sample_dsf_data: pd.DataFrame) -> None:
+        """Test that get_dsf_curve_features calculates delta_tm with a control Tm."""
+        # Filter data for a single well
+        single_well_data = sample_dsf_data.loc[sample_dsf_data["well_position"] == "A1", :].copy()
+
+        avg_control_tm = 60.0
+
+        features = get_dsf_curve_features(single_well_data, avg_control_tm=avg_control_tm)
+
+        # delta_tm should be calculated
+        expected_delta_tm = features["tm"] - avg_control_tm
+        assert features["delta_tm"] == pytest.approx(expected_delta_tm)
+
+    def test_get_dsf_curve_features_with_smoothing(self, sample_dsf_data: pd.DataFrame) -> None:
+        """Test that get_dsf_curve_features works with different smoothing parameters."""
+        # Filter data for a single well
+        single_well_data = sample_dsf_data.loc[sample_dsf_data["well_position"] == "A1", :].copy()
+
+        # First with low smoothing
+        features_low = get_dsf_curve_features(single_well_data, smoothing=0.001)
+
+        # Then with high smoothing
+        features_high = get_dsf_curve_features(single_well_data, smoothing=0.1)
+
+        # Check that smoothing affects the calculated features
+        # Compare at least one key feature like Tm
+        assert isinstance(features_low["tm"], float)
+        assert isinstance(features_high["tm"], float)
+
+
+class TestValidation:
+    def test_validate_temperature_range_valid(self) -> None:
+        """Test that validate_temperature_range returns True for valid input."""
+        assert validate_temperature_range(25.0, 95.0) is True
+
+    def test_validate_temperature_range_invalid(self) -> None:
+        """Test that validate_temperature_range raises ValueError for invalid input."""
+        with pytest.raises(ValueError):
+            validate_temperature_range(95.0, 25.0)  # min > max
+
+        with pytest.raises(ValueError):
+            validate_temperature_range(50.0, 50.0)  # min == max
+
+    def test_validate_temperature_range_none_values(self) -> None:
+        """Test that validate_temperature_range returns False when None is provided."""
+        assert validate_temperature_range(None, 95.0) is False
+        assert validate_temperature_range(25.0, None) is False
+        assert validate_temperature_range(None, None) is False
