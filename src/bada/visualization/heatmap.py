@@ -2,7 +2,7 @@ import numpy as np
 import plotly.graph_objects as go
 
 
-def plot_plate_data(
+def create_heatmap_plot(
     plate_data: np.ndarray,
     cols: list[str],
     rows: list[str],

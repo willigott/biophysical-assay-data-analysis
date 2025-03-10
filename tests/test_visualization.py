@@ -3,7 +3,7 @@ from typing import List, cast
 import numpy as np
 import plotly.graph_objects as go
 
-from bada.visualization.heatmap import plot_plate_data
+from bada.visualization.heatmap import create_heatmap_plot
 
 
 class TestHeatmap:
@@ -11,7 +11,7 @@ class TestHeatmap:
         self, sample_plate_data: np.ndarray, plate_rows: List[str], plate_cols: List[str]
     ) -> None:
         """Test that plot_plate_data returns a plotly Figure object."""
-        fig = plot_plate_data(
+        fig = create_heatmap_plot(
             sample_plate_data,
             cols=plate_cols,
             rows=plate_rows,
@@ -25,7 +25,7 @@ class TestHeatmap:
         self, sample_plate_data: np.ndarray, plate_rows: List[str], plate_cols: List[str]
     ) -> None:
         """Test that plot_plate_data contains a heatmap trace."""
-        fig = plot_plate_data(
+        fig = create_heatmap_plot(
             sample_plate_data, cols=plate_cols, rows=plate_rows, title="Test Heatmap"
         )
 
@@ -47,7 +47,7 @@ class TestHeatmap:
     ) -> None:
         """Test that plot_plate_data has the expected layout."""
         title = "Test Heatmap"
-        fig = plot_plate_data(sample_plate_data, cols=plate_cols, rows=plate_rows, title=title)
+        fig = create_heatmap_plot(sample_plate_data, cols=plate_cols, rows=plate_rows, title=title)
 
         # Check title is set correctly
         assert fig.layout.title.text == title  # type: ignore
@@ -67,7 +67,7 @@ class TestHeatmap:
     ) -> None:
         """Test that custom color scales can be applied."""
         color_scale = "Viridis"
-        fig = plot_plate_data(
+        fig = create_heatmap_plot(
             sample_plate_data,
             cols=plate_cols,
             rows=plate_rows,
