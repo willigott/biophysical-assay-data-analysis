@@ -6,6 +6,7 @@ from scipy.interpolate import UnivariateSpline
 from bada.processing.feature_extraction import (
     _get_max_derivative,
     get_dsf_curve_features,
+    get_dsf_curve_features_multiple_wells,
     get_min_max_values,
     get_tm,
 )
@@ -262,6 +263,138 @@ class TestFeatureExtraction:
         # Compare at least one key feature like Tm
         assert isinstance(features_low["tm"], float)
         assert isinstance(features_high["tm"], float)
+
+    def test_get_all_wells_dsf_features(self, sample_dsf_data: pd.DataFrame) -> None:
+        """Test that get_all_wells_dsf_features processes all wells correctly."""
+        # Get features for all wells
+        all_features = get_dsf_curve_features_multiple_wells(sample_dsf_data)
+
+        # Check that we have features for each well
+        well_positions = sample_dsf_data["well_position"].unique()
+        assert len(all_features) == len(well_positions)
+
+        # Check that all well positions are included as keys
+        for well in well_positions:
+            assert well in all_features
+
+        # Check that features for each well have the expected structure
+        for well, features in all_features.items():
+            # Check that all expected keys are present
+            expected_keys = [
+                "full_well_data",
+                "x_spline",
+                "y_spline",
+                "y_spline_derivative",
+                "min_fluorescence",
+                "max_fluorescence",
+                "temp_at_min",
+                "temp_at_max",
+                "tm",
+                "max_derivative_value",
+                "delta_tm",
+                "min_temp",
+                "max_temp",
+            ]
+            for key in expected_keys:
+                assert key in features
+
+            # Check that well data is filtered correctly
+            well_data = features["full_well_data"]
+            assert isinstance(well_data, pd.DataFrame)
+            assert well_data["well_position"].nunique() == 1
+            assert well_data["well_position"].values[0] == well
+
+    def test_get_all_wells_dsf_features_with_params(self, sample_dsf_data: pd.DataFrame) -> None:
+        """Test that get_all_wells_dsf_features forwards parameters correctly."""
+        # Set custom parameters
+        min_temp = 40.0
+        max_temp = 80.0
+        smoothing = 0.05
+        avg_control_tm = 60.0
+
+        # Get features with custom parameters
+        all_features = get_dsf_curve_features_multiple_wells(
+            sample_dsf_data,
+            min_temp=min_temp,
+            max_temp=max_temp,
+            smoothing=smoothing,
+            avg_control_tm=avg_control_tm,
+        )
+
+        # Check that parameters were applied correctly
+        for well, features in all_features.items():
+            # Check temperature range
+            assert features["min_temp"] == min_temp
+            assert features["max_temp"] == max_temp
+
+            # Check delta_tm was calculated using control Tm
+            expected_delta_tm = features["tm"] - avg_control_tm
+            assert features["delta_tm"] == pytest.approx(expected_delta_tm)
+
+    def test_get_all_wells_dsf_features_with_error(
+        self, sample_dsf_data: pd.DataFrame, mocker, capfd
+    ) -> None:
+        """Test that get_all_wells_dsf_features handles errors for individual wells."""
+        # Create a mock version of get_dsf_curve_features that raises an exception for a specific
+        # well
+        original_get_features = get_dsf_curve_features
+
+        def mock_get_features(data, **kwargs):
+            if data["well_position"].values[0] == "A1":
+                raise ValueError("Test error for A1")
+            return original_get_features(data, **kwargs)
+
+        # Apply the mock and capture stdout
+        mocker.patch(
+            "bada.processing.feature_extraction.get_dsf_curve_features",
+            side_effect=mock_get_features,
+        )
+
+        # Run function
+        all_features = get_dsf_curve_features_multiple_wells(sample_dsf_data)
+
+        # Check that the function continued despite the error
+        assert "A1" not in all_features
+        assert "A2" in all_features
+
+        # Check that the error was printed
+        captured = capfd.readouterr()
+        assert "Error processing well A1: Test error for A1" in captured.out
+
+    def test_get_all_wells_dsf_features_with_selected_wells(
+        self, sample_dsf_data: pd.DataFrame
+    ) -> None:
+        """Test that get_all_wells_dsf_features works correctly with selected_wells parameter."""
+        # Get features for a specific well only
+        selected_wells = ["A1"]
+        all_features = get_dsf_curve_features_multiple_wells(
+            sample_dsf_data, selected_wells=selected_wells
+        )
+
+        # Check that only the selected well is processed
+        assert len(all_features) == 1
+        assert "A1" in all_features
+        assert "A2" not in all_features
+
+        # Check that the selected well's features have the expected structure
+        features = all_features["A1"]
+        expected_keys = [
+            "full_well_data",
+            "x_spline",
+            "y_spline",
+            "y_spline_derivative",
+            "min_fluorescence",
+            "max_fluorescence",
+            "temp_at_min",
+            "temp_at_max",
+            "tm",
+            "max_derivative_value",
+            "delta_tm",
+            "min_temp",
+            "max_temp",
+        ]
+        for key in expected_keys:
+            assert key in features
 
 
 class TestValidation:

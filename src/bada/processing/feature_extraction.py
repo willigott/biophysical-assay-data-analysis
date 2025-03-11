@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Dict, Optional, Union
 
 import numpy as np
 import pandas as pd
@@ -124,3 +124,57 @@ def get_dsf_curve_features(
         "min_temp": min_temp,
         "max_temp": max_temp,
     }
+
+
+def get_dsf_curve_features_multiple_wells(
+    data: pd.DataFrame,
+    selected_wells: Optional[list[str]] = None,
+    min_temp: Optional[float] = None,
+    max_temp: Optional[float] = None,
+    smoothing: float = 0.01,
+    avg_control_tm: Optional[float] = None,
+) -> Dict[str, Dict[str, Union[float, pd.DataFrame, np.ndarray]]]:
+    """
+    Analyze the data for all wells in the dataset.
+
+    This function calls get_dsf_curve_features for each well position in the dataset
+    and returns a dictionary of features for each well.
+
+    Args:
+        data (pd.DataFrame): Dataset containing multiple wells
+        selected_wells (list[str], optional): List of wells to analyze, if None all wells are
+        analyzed
+        min_temp (float, optional): Minimum temperature for analysis range
+        max_temp (float, optional): Maximum temperature for analysis range
+        smoothing (float, default=0.01): Smoothing factor for spline fitting
+        avg_control_tm (float, optional): Average Tm of control wells
+
+    Returns:
+        Dict[str, Dict]: Dictionary where keys are well positions and values are
+                        the feature dictionaries returned by get_dsf_curve_features
+    """
+
+    if selected_wells is None:
+        well_positions = data["well_position"].unique()
+    else:
+        well_positions = selected_wells
+
+    all_wells_features = {}
+
+    for well in well_positions:
+        well_data = data.loc[data["well_position"] == well, :].copy()
+
+        try:
+            well_features = get_dsf_curve_features(
+                well_data,
+                min_temp=min_temp,
+                max_temp=max_temp,
+                smoothing=smoothing,
+                avg_control_tm=avg_control_tm,
+            )
+            all_wells_features[well] = well_features
+        except Exception as e:
+            print(f"Error processing well {well}: {str(e)}")
+            continue
+
+    return all_wells_features
