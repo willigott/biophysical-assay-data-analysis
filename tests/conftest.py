@@ -4,7 +4,7 @@ from typing import Any, List
 import numpy as np
 import pandas as pd
 import pytest
-from scipy.interpolate import UnivariateSpline
+from scipy.interpolate import BSpline, make_splrep
 
 from bada.models.dsf_input_model import DSFInput
 
@@ -51,11 +51,9 @@ def sample_validated_dsf_data(sample_dsf_data: pd.DataFrame) -> pd.DataFrame:
 
 
 @pytest.fixture
-def sample_spline(
-    sample_temperatures: np.ndarray, sample_fluorescence: np.ndarray
-) -> UnivariateSpline:
+def sample_spline(sample_temperatures: np.ndarray, sample_fluorescence: np.ndarray) -> BSpline:
     """Sample spline for testing."""
-    return UnivariateSpline(sample_temperatures, sample_fluorescence, s=0.01)
+    return make_splrep(sample_temperatures, sample_fluorescence, s=0.01)  # type: ignore
 
 
 @pytest.fixture

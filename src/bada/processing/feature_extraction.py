@@ -2,7 +2,7 @@ from typing import Dict, Optional, Union
 
 import numpy as np
 import pandas as pd
-from scipy.interpolate import UnivariateSpline
+from scipy.interpolate import BSpline
 
 from bada.processing.preprocessing import get_spline, get_spline_derivative
 from bada.utils.validation import validate_temperature_range
@@ -30,7 +30,7 @@ def get_min_max_values(
     return (y_min, y_max, x_at_min_y, x_at_max_y)
 
 
-def _get_max_derivative(spline: UnivariateSpline, x_spline: np.ndarray) -> tuple[float, float]:
+def _get_max_derivative(spline: BSpline, x_spline: np.ndarray) -> tuple[float, float]:
     """Get maximum derivative from spline fit"""
     y_spline_derivative = get_spline_derivative(spline, x_spline)
     max_derivative_idx = np.argmax(y_spline_derivative)

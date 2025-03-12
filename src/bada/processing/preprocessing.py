@@ -1,7 +1,7 @@
 from dtaidistance import dtw
 import numpy as np
 import pandas as pd
-from scipy.interpolate import UnivariateSpline
+from scipy.interpolate import BSpline, make_splrep
 
 
 def get_normalized_signal(signal: np.ndarray | pd.Series) -> np.ndarray:
@@ -15,16 +15,16 @@ def get_spline(
     y: np.ndarray | pd.Series,
     smoothing: float = 0.01,
     n_points: int = 1000,
-) -> tuple[UnivariateSpline, np.ndarray, np.ndarray]:
+) -> tuple[BSpline, np.ndarray, np.ndarray]:
     """Fit spline to temperature and fluorescence data"""
-    spline = UnivariateSpline(x, y, s=smoothing)
+    spline = make_splrep(x, y, s=smoothing)  # type: ignore
     x_spline = np.linspace(min(x), max(x), n_points)
     y_spline = np.asarray(spline(x_spline))
 
     return (spline, x_spline, y_spline)
 
 
-def get_spline_derivative(spline: UnivariateSpline, x_spline: np.ndarray) -> np.ndarray:
+def get_spline_derivative(spline: BSpline, x_spline: np.ndarray) -> np.ndarray:
     """Get derivative of spline"""
 
     return np.asarray(spline.derivative()(x_spline))

@@ -1,7 +1,7 @@
 import numpy as np
 import pandas as pd
 import pytest
-from scipy.interpolate import UnivariateSpline
+from scipy.interpolate import BSpline
 
 from bada.processing.feature_extraction import (
     _get_max_derivative,
@@ -43,7 +43,7 @@ class TestPreprocessing:
         )
 
         # Check types
-        assert isinstance(spline, UnivariateSpline)
+        assert isinstance(spline, BSpline)
         assert isinstance(x_spline, np.ndarray)
         assert isinstance(y_spline, np.ndarray)
 
@@ -56,7 +56,7 @@ class TestPreprocessing:
         assert np.max(x_spline) == pytest.approx(np.max(sample_temperatures))
 
     def test_get_spline_derivative(
-        self, sample_spline: UnivariateSpline, sample_spline_x: np.ndarray
+        self, sample_spline: BSpline, sample_spline_x: np.ndarray
     ) -> None:
         """Test that get_spline_derivative returns the derivative of the spline."""
         derivative = get_spline_derivative(sample_spline, sample_spline_x)
@@ -144,9 +144,7 @@ class TestFeatureExtraction:
         assert np.min(sample_temperatures) <= x_at_min <= np.max(sample_temperatures)
         assert np.min(sample_temperatures) <= x_at_max <= np.max(sample_temperatures)
 
-    def test_get_max_derivative(
-        self, sample_spline: UnivariateSpline, sample_spline_x: np.ndarray
-    ) -> None:
+    def test_get_max_derivative(self, sample_spline: BSpline, sample_spline_x: np.ndarray) -> None:
         """Test that _get_max_derivative finds the maximum of the derivative."""
         max_val, max_idx = _get_max_derivative(sample_spline, sample_spline_x)
 
