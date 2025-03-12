@@ -68,6 +68,8 @@ coverage.xml
 .dmypy.json
 dmypy.json
 
-
-tag_version.py
+# Playground
 play_*.py
+
+# output csv files
+*_results.csv
