@@ -106,7 +106,7 @@ control_max_tm = all_control_results_df['tm'].idxmax()
 control_min_tm = all_control_results_df['tm'].idxmin()
 ```
 
-Now we can plot the data for teh control with the largest `Tm`
+Now we can plot the data for the control with the largest `Tm`
 
 ```python
 fig_control_max_tm = create_melt_curve_plot_from_features(all_control_results[control_max_tm])
@@ -129,9 +129,9 @@ control_average_tm = np.mean([v['tm'] for _, v in all_control_results.items()])
 control_average_tm
 ```
 
-## Empty well analysis
+## Identify atypical behavior
 
-If you work with a adatset where you don't have information on where the empty wells where placed, it can be time-consuming to go through all signal profiles and identify them manually. `bada` helps with this by using `Dynamic Time Warping` to compare shapes of all fluorescence signals against teh reference control. If the shapes are similar (but maybe shifted in temperature), they will have a very small difference, while if the shapes are very different, the distances between the cuves are big. To simlify and speed up the analysis, we again work with teh truncated signals: 
+If you work with a adatset where you don't have information on where the empty wells where placed, it can be time-consuming to go through all signal profiles and identify them manually. And even if you know which ones are filled, there might be cases where something went wrong leading to a signal with an atypical shape. `bada` helps with this by using `Dynamic Time Warping` to compare shapes of all fluorescence signals against the reference control. If the shapes are similar (but maybe shifted in temperature), they will have a very small difference, while if the shapes are very different, the distances between the cuves are big. To simlify and speed up the analysis, we again work with the truncated signals: 
 
 ```python
 m1 = dsf_data['temperature'] >= min_temp
@@ -145,7 +145,7 @@ dsf_data_truncated = dsf_data.loc[m1 & m2, :]
 dtw_distances = get_dtw_distances_from_reference(dsf_data_truncated, reference_well=reference_control)
 ```
 
-The easisest way to inspect the results is a visualization of the results on a heatmap which is straightforward to generate using `create_heatmap_plot`. To convert our data into teh required format, we can use `convert_distances_to_plate_format`
+The easisest way to inspect the results is a visualization of the results on a heatmap which is straightforward to generate using `create_heatmap_plot`. To convert our data into the required format, we can use `convert_distances_to_plate_format`
 
 ```python
 plate_data, cols, rows = convert_distances_to_plate_format(dtw_distances, plate_size)
@@ -153,7 +153,7 @@ fig_dtw = create_heatmap_plot(plate_data, cols, rows, title=f"DTW distances to c
 fig_dtw.show()
 ```
 
-The results seem rather clear: all the blue wells are filled while the red ones are empty. Obviously, if you have prior info on which wells are filled and which ones aren't this analysis is not needed. It is also advisable to always double-check these results. 
+The results seem rather clear: all the blue wells are filled while the red ones are empty. Obviously, if you have prior info on which wells are filled and which ones aren't this analysis is not needed, however, it can still be useful to identify atypical shapes and to exclude the corresponding wells from further analysis. It is certainly advisable to always double-check these results. 
 
 ## Bulk analysis of all relevant wells
 For now we go ahead and filter all wells where we expect to have a meaningful signal (blue wells):

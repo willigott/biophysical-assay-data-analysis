@@ -10,6 +10,8 @@ def create_heatmap_plot(
     color_scale: str = "RdBu_r",
     colorbar_title: str = "",
 ) -> go.Figure:
+    text = [[f"{val:.2f}" if not np.isnan(val) else "" for val in row] for row in plate_data]
+
     heatmap_fig = go.Figure()
     # fmt: off
     heatmap_fig.add_trace(
@@ -18,7 +20,7 @@ def create_heatmap_plot(
             x=cols,
             y=rows,
             colorscale=color_scale,
-            text=[[f"{val:.2f}" if not np.isnan(val) else "" for val in row] for row in plate_data],
+            text=text,
             texttemplate="%{text}",
             textfont={"size": 10},
             showscale=True,
