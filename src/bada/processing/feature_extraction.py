@@ -47,7 +47,7 @@ def get_tm(
     spline, x_spline, _ = get_spline(temperature, fluorescence, **kwargs)
     max_derivative_value, tm = _get_max_derivative(spline, x_spline)
 
-    return tm, max_derivative_value
+    return (tm, max_derivative_value)
 
 
 def get_dsf_curve_features(
@@ -116,11 +116,13 @@ def get_dsf_curve_features(
         "y_spline_derivative": y_spline_derivative,
         "min_fluorescence": min_fluorescence,
         "max_fluorescence": max_fluorescence,
+        "fluorescence_range": max_fluorescence - min_fluorescence,
         "temp_at_min": temp_at_min,
         "temp_at_max": temp_at_max,
         "tm": temp_at_max_derivative,
         "max_derivative_value": max_derivative_value,
         "delta_tm": delta_tm,
+        "smoothing": smoothing,
         "min_temp": min_temp,
         "max_temp": max_temp,
     }
