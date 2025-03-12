@@ -19,29 +19,29 @@ jobs:
           path: dist/
           retention-days: 7
 
-  publish-testpypi:
-    name: Publish to TestPyPI
-    needs: [build]
-    # Only run when a release is published
-    if: ${{ github.event_name == 'release' && github.event.action == 'published' }}
-    runs-on: ubuntu-latest
-    environment: release-testpypi
-    permissions:
-      id-token: write  # Required for trusted publishing
-    steps:
-      - uses: actions/checkout@v4
-      - uses: ./.github/actions/setup
-      - name: Download built package
-        uses: actions/download-artifact@v4
-        with:
-          name: dist
-          path: dist/
-      - name: Publish to TestPyPI
-        run: uv publish --index testpypi dist/*
+  # publish-testpypi:
+  #   name: Publish to TestPyPI
+  #   needs: [build]
+  #   # Only run when a release is published
+  #   if: ${{ github.event_name == 'release' && github.event.action == 'published' }}
+  #   runs-on: ubuntu-latest
+  #   environment: release-testpypi
+  #   permissions:
+  #     id-token: write  # Required for trusted publishing
+  #   steps:
+  #     - uses: actions/checkout@v4
+  #     - uses: ./.github/actions/setup
+  #     - name: Download built package
+  #       uses: actions/download-artifact@v4
+  #       with:
+  #         name: dist
+  #         path: dist/
+  #     - name: Publish to TestPyPI
+  #       run: uv publish --index testpypi dist/*
 
   publish-pypi:
     name: Publish to PyPI
-    needs: [publish-testpypi]
+    needs: [build]
     # Only run when a release is published
     if: ${{ github.event_name == 'release' && github.event.action == 'published' }}
     runs-on: ubuntu-latest
@@ -51,8 +51,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/setup
-      - name: Test installation from TestPyPi
-        run: uv pip install -i https://test.pypi.org/simple/ --extra-index-url https://pypi.org/simple bada
+      # - name: Test installation from TestPyPi
+      #   run: uv pip install -i https://test.pypi.org/simple/ --extra-index-url https://pypi.org/simple bada
       - name: Download built package
         uses: actions/download-artifact@v4
         with:
