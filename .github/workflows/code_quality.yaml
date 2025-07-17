@@ -58,7 +58,19 @@ jobs:
         with:
           name: coverage-report-${{ matrix.python-version }}
           path: coverage.xml        
-
+  
+  security:
+    name: Snyk scan
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run Snyk to check for vulnerabilities
+        uses: snyk/actions/python@v1
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        with:
+          args: --severity-threshold=medium
+          
   sonarcloud:
     name: SonarCloud
     runs-on: ubuntu-latest
