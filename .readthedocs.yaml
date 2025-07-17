@@ -9,14 +9,13 @@ build:
   os: ubuntu-24.04
   tools:
     python: "3.13"
-  jobs:
-    pre_build:
-      - pip install uv
-      - uv sync --group docs
+  # Dependencies are automatically installed from [project.optional-dependencies] docs
 
 # Build documentation in the "docs/" directory with Sphinx
 sphinx:
   configuration: docs/conf.py
+  builder: html
+  fail_on_warning: false
 
 # Install dependencies
 python:
