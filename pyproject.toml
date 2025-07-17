@@ -28,6 +28,7 @@ dev = [
     "pytest>=8.3.5",
     "ruff>=0.9.9",
     "pre-commit>=4.1.0",
+    "jupytext>=1.17.2",
 ]
 docs = [
     "sphinx>=7.0",
