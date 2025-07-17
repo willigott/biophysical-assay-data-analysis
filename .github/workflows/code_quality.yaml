@@ -62,10 +62,11 @@ jobs:
   security:
     name: Snyk scan
     runs-on: ubuntu-latest
+    needs: [linting, formatting, type-checking, testing]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@master
       - name: Run Snyk to check for vulnerabilities
-        uses: snyk/actions/python@v1
+        uses: snyk/actions/python@master
         env:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
         with:
@@ -74,7 +75,7 @@ jobs:
   sonarcloud:
     name: SonarCloud
     runs-on: ubuntu-latest
-    needs: [linting, formatting, type-checking, testing]
+    needs: [linting, formatting, type-checking, testing, security]
     steps:
       - uses: actions/checkout@v4
         with:
