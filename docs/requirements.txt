@@ -1,3 +1,6 @@
+# Sphinx and documentation-specific dependencies only
+# Project dependencies are installed automatically from pyproject.toml
+# when the package is installed via "path: ." in .readthedocs.yaml
 sphinx>=7.0
 sphinx-autodoc-typehints>=1.24
 furo>=2023.9.10
