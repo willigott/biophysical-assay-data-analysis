@@ -1,4 +1,6 @@
-from typing import Dict, Optional, Union
+from dataclasses import dataclass, field
+import logging
+from typing import Optional
 
 import numpy as np
 import pandas as pd
@@ -6,6 +8,21 @@ from scipy.interpolate import BSpline
 
 from bada.processing.preprocessing import get_spline, get_spline_derivative
 from bada.utils.validation import validate_temperature_range
+
+logger = logging.getLogger(__name__)
+
+
+@dataclass
+class WellProcessingResult:
+    """Result of processing multiple wells.
+
+    Attributes:
+        features: Mapping of well position to feature dict for successfully processed wells.
+        failures: Mapping of well position to exception for wells that failed processing.
+    """
+
+    features: dict[str, dict[str, float | pd.DataFrame | np.ndarray]] = field(default_factory=dict)
+    failures: dict[str, Exception] = field(default_factory=dict)
 
 
 def get_min_max_values(
@@ -135,12 +152,12 @@ def get_dsf_curve_features_multiple_wells(
     max_temp: Optional[float] = None,
     smoothing: float = 0.01,
     avg_control_tm: Optional[float] = None,
-) -> Dict[str, Dict[str, Union[float, pd.DataFrame, np.ndarray]]]:
+) -> WellProcessingResult:
     """
     Analyze the data for all wells in the dataset.
 
     This function calls get_dsf_curve_features for each well position in the dataset
-    and returns a dictionary of features for each well.
+    and returns a result containing features for successful wells and errors for failed wells.
 
     Args:
         data (pd.DataFrame): Dataset containing multiple wells
@@ -152,8 +169,7 @@ def get_dsf_curve_features_multiple_wells(
         avg_control_tm (float, optional): Average Tm of control wells
 
     Returns:
-        Dict[str, Dict]: Dictionary where keys are well positions and values are
-                        the feature dictionaries returned by get_dsf_curve_features
+        WellProcessingResult: Contains .features (successful wells) and .failures (failed wells)
     """
 
     if selected_wells is None:
@@ -161,7 +177,7 @@ def get_dsf_curve_features_multiple_wells(
     else:
         well_positions = selected_wells
 
-    all_wells_features = {}
+    result = WellProcessingResult()
 
     for well in well_positions:
         well_data = data.loc[data["well_position"] == well, :].copy()
@@ -174,9 +190,15 @@ def get_dsf_curve_features_multiple_wells(
                 smoothing=smoothing,
                 avg_control_tm=avg_control_tm,
             )
-            all_wells_features[well] = well_features
-        except Exception as e:
-            print(f"Error processing well {well}: {str(e)}")
-            continue
+            result.features[well] = well_features
+        except (ValueError, np.linalg.LinAlgError, TypeError) as e:
+            result.failures[well] = e
+            logger.warning("Failed to process well %s: %s", well, e)
 
-    return all_wells_features
+    n_total = len(well_positions)
+    n_failed = len(result.failures)
+    logger.info(
+        "Processed %d wells: %d succeeded, %d failed", n_total, n_total - n_failed, n_failed
+    )
+
+    return result

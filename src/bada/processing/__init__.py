@@ -1,4 +1,5 @@
 from bada.processing.feature_extraction import (
+    WellProcessingResult,
     get_dsf_curve_features,
     get_dsf_curve_features_multiple_wells,
 )
