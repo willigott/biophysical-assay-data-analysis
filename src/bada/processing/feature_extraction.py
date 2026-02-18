@@ -1,6 +1,5 @@
 from dataclasses import dataclass, field
 import logging
-from typing import Optional
 
 import numpy as np
 import pandas as pd
@@ -69,10 +68,10 @@ def get_tm(
 
 def get_dsf_curve_features(
     data: pd.DataFrame,
-    min_temp: Optional[float] = None,
-    max_temp: Optional[float] = None,
+    min_temp: float | None = None,
+    max_temp: float | None = None,
     smoothing: float = 0.01,
-    avg_control_tm: Optional[float] = None,
+    avg_control_tm: float | None = None,
 ) -> dict[str, float | pd.DataFrame | np.ndarray]:
     """
     Analyze the data for a single well.
@@ -147,11 +146,11 @@ def get_dsf_curve_features(
 
 def get_dsf_curve_features_multiple_wells(
     data: pd.DataFrame,
-    selected_wells: Optional[list[str]] = None,
-    min_temp: Optional[float] = None,
-    max_temp: Optional[float] = None,
+    selected_wells: list[str] | None = None,
+    min_temp: float | None = None,
+    max_temp: float | None = None,
     smoothing: float = 0.01,
-    avg_control_tm: Optional[float] = None,
+    avg_control_tm: float | None = None,
 ) -> WellProcessingResult:
     """
     Analyze the data for all wells in the dataset.

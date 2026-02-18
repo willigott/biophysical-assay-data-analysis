@@ -1,5 +1,3 @@
-from typing import Dict, Union
-
 import numpy as np
 import pandas as pd
 import pytest
@@ -83,7 +81,7 @@ class TestReformatting:
     def test_convert_features_to_plate_format_96_well(self):
         """Test converting feature data to plate format for a 96-well plate."""
         # Create sample feature data with the correct type annotation
-        features: Dict[str, Dict[str, Union[float, pd.DataFrame, np.ndarray]]] = {
+        features: dict[str, dict[str, float | pd.DataFrame | np.ndarray]] = {
             "A1": {"tm": 60.0, "max_derivative_value": 0.5},
             "A2": {"tm": 65.0, "max_derivative_value": 0.6},
             "B1": {"tm": 70.0, "max_derivative_value": 0.7},
@@ -117,7 +115,7 @@ class TestReformatting:
         """Test that convert_features_to_plate_format raises KeyError when a requested feature is
         missing."""
         # Create sample feature data with missing feature for one well
-        features: Dict[str, Dict[str, Union[float, pd.DataFrame, np.ndarray]]] = {
+        features: dict[str, dict[str, float | pd.DataFrame | np.ndarray]] = {
             "A1": {"tm": 60.0, "max_derivative_value": 0.5},
             "A2": {"tm": 65.0},  # missing max_derivative_value
         }
@@ -130,7 +128,7 @@ class TestReformatting:
         """Test that convert_features_to_plate_format raises KeyError when a nonexistent feature is
         requested."""
         # Create sample feature data
-        features: Dict[str, Dict[str, Union[float, pd.DataFrame, np.ndarray]]] = {
+        features: dict[str, dict[str, float | pd.DataFrame | np.ndarray]] = {
             "A1": {"tm": 60.0, "max_derivative_value": 0.5},
             "A2": {"tm": 65.0, "max_derivative_value": 0.6},
         }

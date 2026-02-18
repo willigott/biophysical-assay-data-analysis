@@ -1,5 +1,4 @@
 from enum import Enum
-from typing import Optional
 
 import numpy as np
 import pandas as pd
@@ -18,9 +17,9 @@ class PlotType(Enum):
 
 
 def _infer_plot_type(
-    x_spline: Optional[np.ndarray],
-    y_spline: Optional[np.ndarray],
-    y_spline_derivative: Optional[np.ndarray],
+    x_spline: np.ndarray | None,
+    y_spline: np.ndarray | None,
+    y_spline_derivative: np.ndarray | None,
 ) -> PlotType:
     """Determine the appropriate plot type based on available data.
 
@@ -44,12 +43,12 @@ def _infer_plot_type(
 
 def create_melt_curve_plot(
     full_well_data: pd.DataFrame,
-    x_spline: Optional[np.ndarray] = None,
-    y_spline: Optional[np.ndarray] = None,
-    y_spline_derivative: Optional[np.ndarray] = None,
-    tm: Optional[float] = None,
-    min_temp: Optional[float] = None,
-    max_temp: Optional[float] = None,
+    x_spline: np.ndarray | None = None,
+    y_spline: np.ndarray | None = None,
+    y_spline_derivative: np.ndarray | None = None,
+    tm: float | None = None,
+    min_temp: float | None = None,
+    max_temp: float | None = None,
 ) -> go.Figure:
     """Create a melt curve plot with automatic display options based on provided data.
 

@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Any, List
+from typing import Any
 
 import numpy as np
 import pandas as pd
@@ -77,12 +77,12 @@ def sample_plate_data() -> np.ndarray:
 
 
 @pytest.fixture
-def plate_rows() -> List[str]:
+def plate_rows() -> list[str]:
     """Row labels for a standard 96-well plate."""
     return list("ABCDEFGH")
 
 
 @pytest.fixture
-def plate_cols() -> List[str]:
+def plate_cols() -> list[str]:
     """Column labels for a standard 96-well plate."""
     return [str(i) for i in range(1, 13)]

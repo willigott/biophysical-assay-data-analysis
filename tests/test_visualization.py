@@ -1,4 +1,4 @@
-from typing import List, cast
+from typing import cast
 
 import numpy as np
 import pandas as pd
@@ -20,7 +20,7 @@ from bada.visualization.melting_curves import (
 
 class TestHeatmap:
     def test_plot_plate_data_return_type(
-        self, sample_plate_data: np.ndarray, plate_rows: List[str], plate_cols: List[str]
+        self, sample_plate_data: np.ndarray, plate_rows: list[str], plate_cols: list[str]
     ) -> None:
         """Test that plot_plate_data returns a plotly Figure object."""
         fig = create_heatmap_plot(
@@ -34,7 +34,7 @@ class TestHeatmap:
         assert isinstance(fig, go.Figure)
 
     def test_plot_plate_data_content(
-        self, sample_plate_data: np.ndarray, plate_rows: List[str], plate_cols: List[str]
+        self, sample_plate_data: np.ndarray, plate_rows: list[str], plate_cols: list[str]
     ) -> None:
         """Test that plot_plate_data contains a heatmap trace."""
         fig = create_heatmap_plot(
@@ -55,7 +55,7 @@ class TestHeatmap:
         assert tuple(trace.y) == tuple(plate_rows)  # type: ignore
 
     def test_plot_plate_data_layout(
-        self, sample_plate_data: np.ndarray, plate_rows: List[str], plate_cols: List[str]
+        self, sample_plate_data: np.ndarray, plate_rows: list[str], plate_cols: list[str]
     ) -> None:
         """Test that plot_plate_data has the expected layout."""
         title = "Test Heatmap"
@@ -75,7 +75,7 @@ class TestHeatmap:
         assert fig.layout.xaxis.side == "top"  # type: ignore  # x-axis labels on top
 
     def test_custom_color_scale(
-        self, sample_plate_data: np.ndarray, plate_rows: List[str], plate_cols: List[str]
+        self, sample_plate_data: np.ndarray, plate_rows: list[str], plate_cols: list[str]
     ) -> None:
         """Test that custom color scales can be applied."""
         color_scale = "Viridis"

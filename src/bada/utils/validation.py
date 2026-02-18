@@ -1,7 +1,4 @@
-from typing import Optional
-
-
-def validate_temperature_range(min_temp: Optional[float], max_temp: Optional[float]) -> bool:
+def validate_temperature_range(min_temp: float | None, max_temp: float | None) -> bool:
     """Validate min and max temperature values.
 
     Args:

@@ -1,5 +1,3 @@
-from typing import Dict, Union
-
 import numpy as np
 import pandas as pd
 
@@ -28,7 +26,7 @@ def convert_distances_to_plate_format(
 
 
 def convert_features_to_plate_format(
-    feature_data: Dict[str, Dict[str, Union[float, pd.DataFrame, np.ndarray]]],
+    feature_data: dict[str, dict[str, float | pd.DataFrame | np.ndarray]],
     plate_size: int,
     feature_name: str,
 ) -> tuple[np.ndarray, list[str], list[str]]:
