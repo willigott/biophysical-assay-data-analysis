@@ -6,7 +6,7 @@ import numpy as np
 import pandas as pd
 from scipy.interpolate import BSpline
 
-from bada.processing.preprocessing import get_spline, get_spline_derivative
+from bada.processing.preprocessing import SplineResult, get_spline, get_spline_derivative
 from bada.utils.validation import validate_temperature_range
 
 logger = logging.getLogger(__name__)
@@ -70,14 +70,26 @@ class WellProcessingResult:
 
 
 def get_min_max_values(
-    x: np.ndarray | pd.Series, y: np.ndarray | pd.Series, **kwargs
+    x: np.ndarray | pd.Series,
+    y: np.ndarray | pd.Series,
+    spline_result: SplineResult | None = None,
+    **kwargs,
 ) -> tuple[float, float, float, float]:
     """Get minimum and maximum values from spline fit
+
+    Args:
+        x: Temperature values.
+        y: Fluorescence values.
+        spline_result: Pre-computed spline result from get_spline(). If None, a new
+            spline is fitted using x, y, and any additional kwargs.
 
     Returns:
         tuple[float, float, float, float]: (min_value_y, max_value_y, x_at_min, x_at_max)
     """
-    _, x_spline, y_spline = get_spline(x, y, **kwargs)
+    if spline_result is None:
+        _, x_spline, y_spline = get_spline(x, y, **kwargs)
+    else:
+        _, x_spline, y_spline = spline_result
 
     min_idx = np.argmin(y_spline)
     max_idx = np.argmax(y_spline)
@@ -102,10 +114,26 @@ def _get_max_derivative(spline: BSpline, x_spline: np.ndarray) -> tuple[float, f
 
 
 def get_tm(
-    temperature: np.ndarray | pd.Series, fluorescence: np.ndarray | pd.Series, **kwargs
+    temperature: np.ndarray | pd.Series,
+    fluorescence: np.ndarray | pd.Series,
+    spline_result: SplineResult | None = None,
+    **kwargs,
 ) -> tuple[float, float]:
-    """Get melting temperature (Tm) from signal"""
-    spline, x_spline, _ = get_spline(temperature, fluorescence, **kwargs)
+    """Get melting temperature (Tm) from signal
+
+    Args:
+        temperature: Temperature values.
+        fluorescence: Fluorescence values.
+        spline_result: Pre-computed spline result from get_spline(). If None, a new
+            spline is fitted using temperature, fluorescence, and any additional kwargs.
+
+    Returns:
+        tuple[float, float]: (tm, max_derivative_value)
+    """
+    if spline_result is None:
+        spline, x_spline, _ = get_spline(temperature, fluorescence, **kwargs)
+    else:
+        spline, x_spline, _ = spline_result
     max_derivative_value, tm = _get_max_derivative(spline, x_spline)
 
     return (tm, max_derivative_value)
@@ -152,17 +180,18 @@ def get_dsf_curve_features(
 
     filtered_data = data[(data["temperature"] >= min_temp) & (data["temperature"] <= max_temp)]
 
-    spline, x_spline, y_spline = get_spline(
+    filtered_spline_result = get_spline(
         np.asarray(filtered_data["temperature"]),
         np.asarray(filtered_data["fluorescence"]),
         smoothing=smoothing,
     )
+    spline, x_spline, y_spline = filtered_spline_result
 
     y_spline_derivative = np.asarray(spline.derivative()(x_spline))
     temp_at_max_derivative, max_derivative_value = get_tm(
         np.asarray(filtered_data["temperature"]),
         np.asarray(filtered_data["fluorescence"]),
-        smoothing=smoothing,
+        spline_result=filtered_spline_result,
     )
 
     if avg_control_tm is not None:

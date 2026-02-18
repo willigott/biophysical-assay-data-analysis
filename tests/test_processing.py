@@ -208,6 +208,24 @@ class TestFeatureExtraction:
         assert np.min(sample_temperatures) <= x_at_min <= np.max(sample_temperatures)
         assert np.min(sample_temperatures) <= x_at_max <= np.max(sample_temperatures)
 
+    def test_get_min_max_values_with_precomputed_spline(
+        self, sample_temperatures: np.ndarray, sample_fluorescence: np.ndarray
+    ) -> None:
+        """Test that get_min_max_values with a pre-computed spline matches the default path.
+
+        When a caller already has a spline (e.g. from get_dsf_curve_features), passing it
+        via spline_result should produce identical results and skip recomputation.
+        """
+        spline_result = get_spline(sample_temperatures, sample_fluorescence)
+
+        result_default = get_min_max_values(sample_temperatures, sample_fluorescence)
+        result_cached = get_min_max_values(
+            sample_temperatures, sample_fluorescence, spline_result=spline_result
+        )
+
+        for default_val, cached_val in zip(result_default, result_cached):
+            assert default_val == cached_val
+
     def test_get_max_derivative(self, sample_spline: BSpline, sample_spline_x: np.ndarray) -> None:
         """Test that _get_max_derivative finds the maximum of the derivative."""
         max_val, max_idx = _get_max_derivative(sample_spline, sample_spline_x)
@@ -229,6 +247,24 @@ class TestFeatureExtraction:
 
         # Tm should be within the range of temperatures
         assert np.min(sample_temperatures) <= tm <= np.max(sample_temperatures)
+
+    def test_get_tm_with_precomputed_spline(
+        self, sample_temperatures: np.ndarray, sample_fluorescence: np.ndarray
+    ) -> None:
+        """Test that get_tm with a pre-computed spline matches the default path.
+
+        This verifies the optimization in get_dsf_curve_features where the filtered-data
+        spline is computed once and reused for both derivative and Tm extraction.
+        """
+        spline_result = get_spline(sample_temperatures, sample_fluorescence)
+
+        tm_default, deriv_default = get_tm(sample_temperatures, sample_fluorescence)
+        tm_cached, deriv_cached = get_tm(
+            sample_temperatures, sample_fluorescence, spline_result=spline_result
+        )
+
+        assert tm_default == tm_cached
+        assert deriv_default == deriv_cached
 
     def test_get_dsf_curve_features(self, sample_dsf_data: pd.DataFrame) -> None:
         """Test that get_dsf_curve_features extracts the expected features."""

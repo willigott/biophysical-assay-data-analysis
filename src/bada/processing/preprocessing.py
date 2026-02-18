@@ -3,6 +3,8 @@ import numpy as np
 import pandas as pd
 from scipy.interpolate import BSpline, make_splrep
 
+SplineResult = tuple[BSpline, np.ndarray, np.ndarray]
+
 
 def get_normalized_signal(signal: np.ndarray | pd.Series) -> np.ndarray:
     """Normalize signal to [0,1] range using min-max normalization.
