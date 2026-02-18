@@ -89,7 +89,7 @@ class TestReformatting:
         }
 
         # Test with tm feature
-        plate_data, cols, rows = convert_features_to_plate_format(features, 96, "tm")
+        plate_data, cols, rows = convert_features_to_plate_format(features, 96, "tm")  # type: ignore[arg-type]
 
         # Check output dimensions
         assert plate_data.shape == (8, 12)
@@ -103,7 +103,7 @@ class TestReformatting:
         assert plate_data[7, 11] == 72.0  # H12 tm
 
         # Test with max_derivative_value feature
-        plate_data, _, _ = convert_features_to_plate_format(features, 96, "max_derivative_value")
+        plate_data, _, _ = convert_features_to_plate_format(features, 96, "max_derivative_value")  # type: ignore[arg-type]
 
         # Check specific values
         assert plate_data[0, 0] == 0.5  # A1 max_derivative_value
@@ -122,7 +122,7 @@ class TestReformatting:
 
         # Function should raise KeyError since the feature is missing for one well
         with pytest.raises(KeyError):
-            convert_features_to_plate_format(features, 96, "max_derivative_value")
+            convert_features_to_plate_format(features, 96, "max_derivative_value")  # type: ignore[arg-type]
 
     def test_convert_features_to_plate_format_raises_keyerror_for_nonexistent_feature(self):
         """Test that convert_features_to_plate_format raises KeyError when a nonexistent feature is
@@ -135,4 +135,4 @@ class TestReformatting:
 
         # Function should raise KeyError for nonexistent feature
         with pytest.raises(KeyError):
-            convert_features_to_plate_format(features, 96, "nonexistent_feature")
+            convert_features_to_plate_format(features, 96, "nonexistent_feature")  # type: ignore[arg-type]

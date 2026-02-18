@@ -1,3 +1,5 @@
+from collections.abc import Mapping
+
 import numpy as np
 
 from bada.processing.feature_extraction import DSFCurveFeatures
@@ -26,7 +28,7 @@ def convert_distances_to_plate_format(
 
 
 def convert_features_to_plate_format(
-    feature_data: dict[str, DSFCurveFeatures],
+    feature_data: Mapping[str, DSFCurveFeatures],
     plate_size: int,
     feature_name: str,
 ) -> tuple[np.ndarray, list[str], list[str]]:

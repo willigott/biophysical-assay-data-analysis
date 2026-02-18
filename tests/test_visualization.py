@@ -291,7 +291,7 @@ class TestMeltingCurves:
             "max_temp": 90.0,
         }
 
-        fig = create_melt_curve_plot_from_features(features)
+        fig = create_melt_curve_plot_from_features(features)  # type: ignore[arg-type]
 
         assert isinstance(fig, go.Figure)
         # Verify the figure was created successfully

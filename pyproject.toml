@@ -46,7 +46,7 @@ publish-url = "https://test.pypi.org/legacy/"
 explicit = true
 
 [tool.pyright]
-include = ["src"]
+include = ["src", "tests"]
 exclude = [".venv"]
 venvPath = "."
 venv = ".venv"
