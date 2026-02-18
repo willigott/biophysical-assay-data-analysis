@@ -224,12 +224,19 @@ class TestLightCycler480Parser:
 
 
 class TestQuantStudio7Parser:
-    def test_read_file(self, mocker, mock_file_path: Any) -> None:
-        """Test that _read_file calls pd.read_csv with the right parameters."""
+    def test_read_file_default_skiprows(self, mocker, mock_file_path: Any) -> None:
+        """Test that _read_file uses default skiprows=21."""
         mock_read_csv = mocker.patch("bada.parsers.quantstudio7_parser.pd.read_csv")
         parser = QuantStudio7Parser(mock_file_path)
         parser._read_file()
         mock_read_csv.assert_called_once_with(mock_file_path, skiprows=21)
+
+    def test_read_file_custom_skiprows(self, mocker, mock_file_path: Any) -> None:
+        """Test that _read_file respects a custom skiprows value."""
+        mock_read_csv = mocker.patch("bada.parsers.quantstudio7_parser.pd.read_csv")
+        parser = QuantStudio7Parser(mock_file_path, skiprows=10)
+        parser._read_file()
+        mock_read_csv.assert_called_once_with(mock_file_path, skiprows=10)
 
     def test_parse(self, mocker, mock_file_path: Any) -> None:
         """Test the parse method calls the expected methods in sequence."""

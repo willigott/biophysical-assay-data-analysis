@@ -1,10 +1,18 @@
+from pathlib import Path
+
 import pandas as pd
 
 from bada.models import DSFInput, QuantStudio7Raw
 from bada.parsers.base_parser import BaseParser
 
+DEFAULT_SKIPROWS = 21
+
 
 class QuantStudio7Parser(BaseParser):
+    def __init__(self, file_path: Path, skiprows: int = DEFAULT_SKIPROWS):
+        super().__init__(file_path)
+        self.skiprows = skiprows
+
     def parse(self) -> pd.DataFrame:
         df = self._read_file()
         self._validate_raw_data(df)
@@ -14,7 +22,7 @@ class QuantStudio7Parser(BaseParser):
         return df
 
     def _read_file(self) -> pd.DataFrame:
-        return pd.read_csv(self.file_path, skiprows=21)
+        return pd.read_csv(self.file_path, skiprows=self.skiprows)
 
     def _validate_raw_data(self, df: pd.DataFrame) -> None:
         QuantStudio7Raw.validate(df)
