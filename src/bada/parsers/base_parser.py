@@ -14,9 +14,12 @@ class BaseParser(ABC):
         if not self.file_path.is_file():
             raise ValueError(f"Path is not a file: {self.file_path}")
 
-    @abstractmethod
     def parse(self) -> pd.DataFrame:
-        pass
+        df = self._read_file()
+        self._validate_raw_data(df)
+        df = self._process_raw_data(df)
+        self._validate_processed_data(df)
+        return df
 
     @abstractmethod
     def _read_file(self) -> pd.DataFrame:

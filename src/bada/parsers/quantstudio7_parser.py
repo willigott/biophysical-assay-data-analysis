@@ -13,14 +13,6 @@ class QuantStudio7Parser(BaseParser):
         super().__init__(file_path)
         self.skiprows = skiprows
 
-    def parse(self) -> pd.DataFrame:
-        df = self._read_file()
-        self._validate_raw_data(df)
-        df = self._process_raw_data(df)
-        self._validate_processed_data(df)
-
-        return df
-
     def _read_file(self) -> pd.DataFrame:
         return pd.read_csv(self.file_path, skiprows=self.skiprows)
 

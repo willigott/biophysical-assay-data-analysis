@@ -13,9 +13,6 @@ class TestBaseParser:
     class ConcreteParser(BaseParser):
         """Concrete implementation of the abstract BaseParser for testing."""
 
-        def parse(self) -> pd.DataFrame:
-            return pd.DataFrame()
-
         def _read_file(self) -> pd.DataFrame:
             return pd.DataFrame()
 
@@ -60,26 +57,23 @@ class TestBaseParser:
         parser._validate_path()
 
     def test_abstract_methods(self, mock_file_path):
-        """Test that abstract methods need to be implemented."""
+        """Test that abstract hook methods need to be implemented.
+
+        BaseParser.parse() is a concrete template method. Only the four hook
+        methods (_read_file, _validate_raw_data, _process_raw_data,
+        _validate_processed_data) are abstract and must be provided by
+        subclasses.
+
+        Reference: Template Method pattern — GoF Design Patterns, Chapter 5.
+        """
         from bada.parsers.base_parser import BaseParser
 
-        # We're expecting these to raise TypeErrors, so we're just checking
-        # that pytest.raises correctly captures them
-        # The linter will flag these, but that's expected since we're testing
-        # that these classes can't be instantiated
-
-        # Test that instantiating the abstract class raises TypeError
+        # BaseParser itself cannot be instantiated (has abstract hooks)
         with pytest.raises(TypeError):
-            # This will fail to instantiate which is the expected behavior
-            # pytest.raises will catch the error
-            # The linter will flag this but it's intentional
             BaseParser(mock_file_path)  # type: ignore
 
-        # Test each abstract method
-        class PartialParser1(BaseParser):
-            def _read_file(self):
-                pass
-
+        # Missing _read_file
+        class MissingReadFile(BaseParser):
             def _validate_raw_data(self, df):
                 pass
 
@@ -90,30 +84,10 @@ class TestBaseParser:
                 pass
 
         with pytest.raises(TypeError):
-            # This will fail which is the expected behavior
-            PartialParser1(mock_file_path)  # type: ignore
+            MissingReadFile(mock_file_path)  # type: ignore
 
-        class PartialParser2(BaseParser):
-            def parse(self):
-                pass
-
-            def _validate_raw_data(self, df):
-                pass
-
-            def _process_raw_data(self, df):
-                pass
-
-            def _validate_processed_data(self, df):
-                pass
-
-        with pytest.raises(TypeError):
-            # This will fail which is the expected behavior
-            PartialParser2(mock_file_path)  # type: ignore
-
-        class PartialParser3(BaseParser):
-            def parse(self):
-                pass
-
+        # Missing _validate_raw_data
+        class MissingValidateRaw(BaseParser):
             def _read_file(self):
                 pass
 
@@ -124,13 +98,10 @@ class TestBaseParser:
                 pass
 
         with pytest.raises(TypeError):
-            # This will fail which is the expected behavior
-            PartialParser3(mock_file_path)  # type: ignore
+            MissingValidateRaw(mock_file_path)  # type: ignore
 
-        class PartialParser4(BaseParser):
-            def parse(self):
-                pass
-
+        # Missing _process_raw_data
+        class MissingProcessRaw(BaseParser):
             def _read_file(self):
                 pass
 
@@ -141,13 +112,10 @@ class TestBaseParser:
                 pass
 
         with pytest.raises(TypeError):
-            # This will fail which is the expected behavior
-            PartialParser4(mock_file_path)  # type: ignore
+            MissingProcessRaw(mock_file_path)  # type: ignore
 
-        class PartialParser5(BaseParser):
-            def parse(self):
-                pass
-
+        # Missing _validate_processed_data
+        class MissingValidateProcessed(BaseParser):
             def _read_file(self):
                 pass
 
@@ -158,8 +126,52 @@ class TestBaseParser:
                 pass
 
         with pytest.raises(TypeError):
-            # This will fail which is the expected behavior
-            PartialParser5(mock_file_path)  # type: ignore
+            MissingValidateProcessed(mock_file_path)  # type: ignore
+
+    def test_parse_calls_hooks_in_order(self, mocker, mock_file_path: Any) -> None:
+        """Test that the template method calls hooks in the correct sequence.
+
+        The Template Method pattern defines an algorithm skeleton in the base
+        class, deferring steps to subclasses. This test verifies parse()
+        orchestrates the four hooks in order: _read_file -> _validate_raw_data
+        -> _process_raw_data -> _validate_processed_data.
+
+        Reference: Template Method pattern — GoF Design Patterns, Chapter 5.
+        """
+        parser = self.ConcreteParser(mock_file_path)
+
+        call_order: list[str] = []
+
+        mock_df = pd.DataFrame({"col": [1]})
+
+        mocker.patch.object(
+            parser, "_read_file", side_effect=lambda: (call_order.append("_read_file"), mock_df)[1]
+        )
+        mocker.patch.object(
+            parser,
+            "_validate_raw_data",
+            side_effect=lambda df: call_order.append("_validate_raw_data"),
+        )
+        mocker.patch.object(
+            parser,
+            "_process_raw_data",
+            side_effect=lambda df: (call_order.append("_process_raw_data"), mock_df)[1],
+        )
+        mocker.patch.object(
+            parser,
+            "_validate_processed_data",
+            side_effect=lambda df: call_order.append("_validate_processed_data"),
+        )
+
+        result = parser.parse()
+
+        assert call_order == [
+            "_read_file",
+            "_validate_raw_data",
+            "_process_raw_data",
+            "_validate_processed_data",
+        ]
+        assert isinstance(result, pd.DataFrame)
 
 
 class TestLightCycler480Parser:
