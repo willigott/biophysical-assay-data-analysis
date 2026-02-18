@@ -5,6 +5,7 @@ import pandas as pd
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 
+from bada.processing.feature_extraction import DSFCurveFeatures
 from bada.utils.validation import validate_temperature_range
 
 
@@ -285,7 +286,7 @@ def _add_temperature_range_indicators(
 
 
 def create_melt_curve_plot_from_features(
-    curve_features: dict,
+    curve_features: DSFCurveFeatures,
 ) -> go.Figure:
     """
     Create a melt curve plot from the results of get_dsf_curve_features

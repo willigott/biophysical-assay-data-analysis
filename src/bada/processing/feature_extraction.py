@@ -1,5 +1,6 @@
 from dataclasses import dataclass, field
 import logging
+from typing import TypedDict
 
 import numpy as np
 import pandas as pd
@@ -11,6 +12,50 @@ from bada.utils.validation import validate_temperature_range
 logger = logging.getLogger(__name__)
 
 
+class DSFCurveFeatures(TypedDict):
+    """Features extracted from a single DSF melting curve.
+
+    Returned by get_dsf_curve_features(). Keys fall into three groups:
+
+    Raw/fitted data:
+        full_well_data: Complete raw well data (unfiltered).
+        x_spline: Temperature values for spline fit (within analysis range).
+        y_spline: Fluorescence values for spline fit.
+        y_spline_derivative: First derivative of spline (dF/dT).
+
+    Scalar features:
+        min_fluorescence: Min fluorescence from full curve spline.
+        max_fluorescence: Max fluorescence from full curve spline.
+        fluorescence_range: max_fluorescence - min_fluorescence.
+        temp_at_min: Temperature at min fluorescence.
+        temp_at_max: Temperature at max fluorescence.
+        tm: Melting temperature (temperature at max first derivative).
+        max_derivative_value: Peak value of first derivative.
+        delta_tm: tm - avg_control_tm; np.nan if no control provided.
+
+    Analysis parameters:
+        smoothing: Smoothing parameter used for spline fitting.
+        min_temp: Lower bound of temperature analysis range.
+        max_temp: Upper bound of temperature analysis range.
+    """
+
+    full_well_data: pd.DataFrame
+    x_spline: np.ndarray
+    y_spline: np.ndarray
+    y_spline_derivative: np.ndarray
+    min_fluorescence: float
+    max_fluorescence: float
+    fluorescence_range: float
+    temp_at_min: float
+    temp_at_max: float
+    tm: float
+    max_derivative_value: float
+    delta_tm: float
+    smoothing: float
+    min_temp: float
+    max_temp: float
+
+
 @dataclass
 class WellProcessingResult:
     """Result of processing multiple wells.
@@ -20,7 +65,7 @@ class WellProcessingResult:
         failures: Mapping of well position to exception for wells that failed processing.
     """
 
-    features: dict[str, dict[str, float | pd.DataFrame | np.ndarray]] = field(default_factory=dict)
+    features: dict[str, DSFCurveFeatures] = field(default_factory=dict)
     failures: dict[str, Exception] = field(default_factory=dict)
 
 
@@ -72,7 +117,7 @@ def get_dsf_curve_features(
     max_temp: float | None = None,
     smoothing: float = 0.01,
     avg_control_tm: float | None = None,
-) -> dict[str, float | pd.DataFrame | np.ndarray]:
+) -> DSFCurveFeatures:
     """
     Analyze the data for a single well.
 

@@ -1,6 +1,6 @@
 import numpy as np
-import pandas as pd
 
+from bada.processing.feature_extraction import DSFCurveFeatures
 from bada.utils.utils import get_column_labels, get_row_labels
 
 """
@@ -26,7 +26,7 @@ def convert_distances_to_plate_format(
 
 
 def convert_features_to_plate_format(
-    feature_data: dict[str, dict[str, float | pd.DataFrame | np.ndarray]],
+    feature_data: dict[str, DSFCurveFeatures],
     plate_size: int,
     feature_name: str,
 ) -> tuple[np.ndarray, list[str], list[str]]:
