@@ -5,9 +5,36 @@ from scipy.interpolate import BSpline, make_splrep
 
 
 def get_normalized_signal(signal: np.ndarray | pd.Series) -> np.ndarray:
-    """Normalize signal to [0,1] range"""
+    """Normalize signal to [0,1] range using min-max normalization.
 
-    return (signal - np.min(signal)) / (np.max(signal) - np.min(signal))
+    Args:
+        signal: Input signal as numpy array or pandas Series.
+
+    Returns:
+        Normalized signal in [0, 1] range.
+
+    Raises:
+        ValueError: If signal is empty, contains NaN, or contains infinite values.
+        ValueError: If all values are identical (zero range).
+    """
+    sig = np.asarray(signal, dtype=float)
+
+    if not sig.size:
+        raise ValueError("Cannot normalize empty signal")
+
+    if np.any(np.isnan(sig)):
+        raise ValueError("Signal contains NaN values")
+
+    if np.any(np.isinf(sig)):
+        raise ValueError("Signal contains infinite values")
+
+    min_val = np.min(sig)
+    max_val = np.max(sig)
+
+    if np.isclose(min_val, max_val):
+        raise ValueError(f"Cannot normalize signal with zero range (all values are {min_val})")
+
+    return (sig - min_val) / (max_val - min_val)
 
 
 def get_spline(

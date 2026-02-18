@@ -25,7 +25,11 @@ from bada.utils.validation import validate_temperature_range
 
 class TestPreprocessing:
     def test_get_normalized_signal(self, sample_fluorescence: np.ndarray) -> None:
-        """Test that normalization maps signal to [0, 1] range."""
+        """Test that normalization maps signal to [0, 1] range.
+
+        Reference: Standard min-max normalization as described in
+        https://en.wikipedia.org/wiki/Feature_scaling#Rescaling_(min-max_normalization)
+        """
         normalized = get_normalized_signal(sample_fluorescence)
 
         # Check bounds
@@ -34,6 +38,65 @@ class TestPreprocessing:
 
         # Check shape preservation
         assert normalized.shape == sample_fluorescence.shape
+
+    def test_get_normalized_signal_pandas_series(self) -> None:
+        """Test that normalization works with pandas Series input."""
+        series = pd.Series([10.0, 20.0, 30.0, 40.0, 50.0])
+        normalized = get_normalized_signal(series)
+
+        assert isinstance(normalized, np.ndarray)
+        assert np.min(normalized) == pytest.approx(0.0)
+        assert np.max(normalized) == pytest.approx(1.0)
+
+    def test_get_normalized_signal_empty_array(self) -> None:
+        """Test that normalizing an empty array raises ValueError.
+
+        An empty signal has no meaningful range and cannot be normalized.
+        """
+        with pytest.raises(ValueError, match="Cannot normalize empty signal"):
+            get_normalized_signal(np.array([]))
+
+    def test_get_normalized_signal_with_nan(self) -> None:
+        """Test that NaN values in the signal raise ValueError.
+
+        NaN values indicate missing or corrupt fluorescence readings. Normalizing
+        such data would silently propagate NaN through downstream calculations
+        (e.g., Tm detection, DTW distance), producing unreliable results.
+        Reference: https://numpy.org/doc/stable/reference/constants.html#numpy.nan
+        """
+        with pytest.raises(ValueError, match="Signal contains NaN values"):
+            get_normalized_signal(np.array([1.0, np.nan, 3.0]))
+
+    def test_get_normalized_signal_with_inf(self) -> None:
+        """Test that infinite values in the signal raise ValueError.
+
+        Infinite values can arise from sensor overflow or prior division-by-zero
+        errors and would corrupt normalization.
+        """
+        with pytest.raises(ValueError, match="Signal contains infinite values"):
+            get_normalized_signal(np.array([1.0, np.inf, 3.0]))
+
+        with pytest.raises(ValueError, match="Signal contains infinite values"):
+            get_normalized_signal(np.array([1.0, -np.inf, 3.0]))
+
+    def test_get_normalized_signal_constant_signal(self) -> None:
+        """Test that a constant signal (zero range) raises ValueError.
+
+        A flat fluorescence trace (max == min) has zero range, making min-max
+        normalization undefined. This typically indicates a failed well or
+        instrument error in DSF experiments.
+        Reference: Niesen et al., Nature Protocols 2007 - quality control criteria
+        for DSF data include checking for flat traces.
+        """
+        with pytest.raises(ValueError, match="Cannot normalize signal with zero range"):
+            get_normalized_signal(np.array([5.0, 5.0, 5.0, 5.0]))
+
+    def test_get_normalized_signal_two_values(self) -> None:
+        """Test normalization with a minimal two-element signal."""
+        normalized = get_normalized_signal(np.array([100.0, 200.0]))
+
+        assert normalized[0] == pytest.approx(0.0)
+        assert normalized[1] == pytest.approx(1.0)
 
     def test_get_spline(
         self, sample_temperatures: np.ndarray, sample_fluorescence: np.ndarray
