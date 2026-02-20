@@ -6,6 +6,7 @@ import numpy as np
 import pandas as pd
 from scipy.interpolate import BSpline
 
+from bada.processing.peak_detection import PeakDetectionConfig, detect_melting_peaks
 from bada.processing.preprocessing import SplineResult, get_spline, get_spline_derivative
 from bada.utils.validation import validate_temperature_range
 
@@ -15,7 +16,7 @@ logger = logging.getLogger(__name__)
 class DSFCurveFeatures(TypedDict):
     """Features extracted from a single DSF melting curve.
 
-    Returned by get_dsf_curve_features(). Keys fall into three groups:
+    Returned by get_dsf_curve_features(). Keys fall into four groups:
 
     Raw/fitted data:
         full_well_data: Complete raw well data (unfiltered).
@@ -32,6 +33,13 @@ class DSFCurveFeatures(TypedDict):
         tm: Melting temperature (temperature at max first derivative).
         max_derivative_value: Peak value of first derivative.
         delta_tm: tm - avg_control_tm; np.nan if no control provided.
+
+    Peak detection quality:
+        peak_confidence: Confidence score in [0.0, 1.0] for the detected Tm.
+        peak_is_valid: Whether a valid peak was found and the curve is not problematic.
+        peak_quality_flags: Quality issue descriptions (e.g., "no_valid_peak",
+            "flat_derivative", "too_many_peaks").
+        n_peaks_detected: Number of valid peaks detected after filtering.
 
     Analysis parameters:
         smoothing: Smoothing parameter used for spline fitting.
@@ -51,6 +59,10 @@ class DSFCurveFeatures(TypedDict):
     tm: float
     max_derivative_value: float
     delta_tm: float
+    peak_confidence: float
+    peak_is_valid: bool
+    peak_quality_flags: list[str]
+    n_peaks_detected: int
     smoothing: float
     min_temp: float
     max_temp: float
@@ -103,14 +115,28 @@ def get_min_max_values(
     return (y_min, y_max, x_at_min_y, x_at_max_y)
 
 
-def _get_max_derivative(spline: BSpline, x_spline: np.ndarray) -> tuple[float, float]:
-    """Get maximum derivative from spline fit"""
-    y_spline_derivative = get_spline_derivative(spline, x_spline)
-    max_derivative_idx = np.argmax(y_spline_derivative)
-    x_at_max_derivative = x_spline[max_derivative_idx]
-    max_derivative_value = y_spline_derivative[max_derivative_idx]
+def _get_max_derivative(
+    spline: BSpline,
+    x_spline: np.ndarray,
+    config: PeakDetectionConfig | None = None,
+) -> tuple[float, float]:
+    """Get maximum derivative from spline fit using robust peak detection.
 
-    return (max_derivative_value, x_at_max_derivative)
+    Delegates to detect_melting_peaks() for validated peak selection instead
+    of naive np.argmax(). Returns (np.nan, np.nan) when no valid peak is found.
+
+    Args:
+        spline: Fitted B-spline.
+        x_spline: Temperature values for the spline.
+        config: Peak detection parameters. Uses defaults if None.
+
+    Returns:
+        tuple[float, float]: (max_derivative_value, x_at_max_derivative)
+    """
+    y_spline_derivative = get_spline_derivative(spline, x_spline)
+    result = detect_melting_peaks(x_spline, y_spline_derivative, config=config)
+
+    return (result.max_derivative_value, result.tm)
 
 
 def get_tm(
@@ -145,6 +171,7 @@ def get_dsf_curve_features(
     max_temp: float | None = None,
     smoothing: float = 0.01,
     avg_control_tm: float | None = None,
+    peak_detection_config: PeakDetectionConfig | None = None,
 ) -> DSFCurveFeatures:
     """
     Analyze the data for a single well.
@@ -155,6 +182,8 @@ def get_dsf_curve_features(
         max_temp (float, optional): Maximum temperature for analysis range
         smoothing (float, default=0.01): Smoothing factor for spline fitting
         avg_control_tm (float, optional): Average Tm of control wells
+        peak_detection_config (PeakDetectionConfig, optional): Configuration for peak
+            detection. Uses defaults if None.
 
     Returns:
         dict: Dictionary containing analysis results
@@ -188,11 +217,11 @@ def get_dsf_curve_features(
     spline, x_spline, y_spline = filtered_spline_result
 
     y_spline_derivative = np.asarray(spline.derivative()(x_spline))
-    temp_at_max_derivative, max_derivative_value = get_tm(
-        np.asarray(filtered_data["temperature"]),
-        np.asarray(filtered_data["fluorescence"]),
-        spline_result=filtered_spline_result,
-    )
+
+    peak_result = detect_melting_peaks(x_spline, y_spline_derivative, config=peak_detection_config)
+
+    temp_at_max_derivative = peak_result.tm
+    max_derivative_value = peak_result.max_derivative_value
 
     if avg_control_tm is not None:
         delta_tm = temp_at_max_derivative - avg_control_tm
@@ -212,6 +241,10 @@ def get_dsf_curve_features(
         "tm": temp_at_max_derivative,
         "max_derivative_value": max_derivative_value,
         "delta_tm": delta_tm,
+        "peak_confidence": peak_result.peak_confidence,
+        "peak_is_valid": peak_result.is_valid,
+        "peak_quality_flags": peak_result.quality_flags,
+        "n_peaks_detected": peak_result.n_peaks_found,
         "smoothing": smoothing,
         "min_temp": min_temp,
         "max_temp": max_temp,
@@ -225,6 +258,7 @@ def get_dsf_curve_features_multiple_wells(
     max_temp: float | None = None,
     smoothing: float = 0.01,
     avg_control_tm: float | None = None,
+    peak_detection_config: PeakDetectionConfig | None = None,
 ) -> WellProcessingResult:
     """
     Analyze the data for all wells in the dataset.
@@ -240,6 +274,8 @@ def get_dsf_curve_features_multiple_wells(
         max_temp (float, optional): Maximum temperature for analysis range
         smoothing (float, default=0.01): Smoothing factor for spline fitting
         avg_control_tm (float, optional): Average Tm of control wells
+        peak_detection_config (PeakDetectionConfig, optional): Configuration for peak
+            detection. Uses defaults if None.
 
     Returns:
         WellProcessingResult: Contains .features (successful wells) and .failures (failed wells)
@@ -262,6 +298,7 @@ def get_dsf_curve_features_multiple_wells(
                 max_temp=max_temp,
                 smoothing=smoothing,
                 avg_control_tm=avg_control_tm,
+                peak_detection_config=peak_detection_config,
             )
             result.features[well] = well_features
         except (ValueError, np.linalg.LinAlgError, TypeError) as e:

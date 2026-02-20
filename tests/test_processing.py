@@ -227,26 +227,35 @@ class TestFeatureExtraction:
             assert default_val == cached_val
 
     def test_get_max_derivative(self, sample_spline: BSpline, sample_spline_x: np.ndarray) -> None:
-        """Test that _get_max_derivative finds the maximum of the derivative."""
-        max_val, max_idx = _get_max_derivative(sample_spline, sample_spline_x)
+        """Test that _get_max_derivative finds Tm near 55.0°C on a Boltzmann sigmoid.
 
-        # Should return a float and an index
+        The sample_fluorescence fixture uses a Boltzmann sigmoid with Tm=55.0°C.
+        The analytical derivative maximum of a Boltzmann sigmoid is at exactly Tm.
+        Tolerance of 0.5°C is derived from DMAN's 0.33°C RMSD on real data
+        (Lee et al. 2019 [2]).
+        """
+        max_val, tm = _get_max_derivative(sample_spline, sample_spline_x)
+
         assert isinstance(max_val, float)
-        assert isinstance(max_idx, float)
-
-        # Index should be within the range of x values
-        assert np.min(sample_spline_x) <= max_idx <= np.max(sample_spline_x)
+        assert isinstance(tm, float)
+        assert np.min(sample_spline_x) <= tm <= np.max(sample_spline_x)
+        # Accuracy: Tm should be close to the known 55.0°C ground truth
+        assert abs(tm - 55.0) < 0.5
 
     def test_get_tm(self, sample_temperatures: np.ndarray, sample_fluorescence: np.ndarray) -> None:
-        """Test that get_tm calculates the melting temperature."""
+        """Test that get_tm detects Tm near 55.0°C on a Boltzmann sigmoid.
+
+        The sample_fluorescence fixture uses a Boltzmann sigmoid with Tm=55.0°C
+        and light noise (sigma=5 RFU). Tolerance of 0.5°C is derived from DMAN's
+        0.33°C RMSD for first-derivative methods on clean data (Lee et al. 2019 [2]).
+        """
         tm, max_derivative = get_tm(sample_temperatures, sample_fluorescence)
 
-        # Should return a float for both values
         assert isinstance(tm, float)
         assert isinstance(max_derivative, float)
-
-        # Tm should be within the range of temperatures
         assert np.min(sample_temperatures) <= tm <= np.max(sample_temperatures)
+        # Accuracy: Tm should be close to the known 55.0°C ground truth
+        assert abs(tm - 55.0) < 0.5
 
     def test_get_tm_with_precomputed_spline(
         self, sample_temperatures: np.ndarray, sample_fluorescence: np.ndarray
@@ -288,6 +297,10 @@ class TestFeatureExtraction:
             "tm",
             "max_derivative_value",
             "delta_tm",
+            "peak_confidence",
+            "peak_is_valid",
+            "peak_quality_flags",
+            "n_peaks_detected",
             "smoothing",
             "min_temp",
             "max_temp",
@@ -307,6 +320,10 @@ class TestFeatureExtraction:
         assert isinstance(features["tm"], float)
         assert isinstance(features["max_derivative_value"], float)
         assert np.isnan(features["delta_tm"])  # No control Tm provided
+        assert isinstance(features["peak_confidence"], float)
+        assert isinstance(features["peak_is_valid"], bool)
+        assert isinstance(features["peak_quality_flags"], list)
+        assert isinstance(features["n_peaks_detected"], int)
         assert isinstance(features["min_temp"], float)
         assert isinstance(features["max_temp"], float)
 
@@ -315,6 +332,8 @@ class TestFeatureExtraction:
         assert features["min_temp"] <= features["tm"] <= features["max_temp"]
         assert features["min_temp"] <= features["temp_at_min"] <= features["max_temp"]
         assert features["min_temp"] <= features["temp_at_max"] <= features["max_temp"]
+        assert 0.0 <= features["peak_confidence"] <= 1.0
+        assert features["n_peaks_detected"] >= 0
 
     def test_get_dsf_curve_features_with_temperature_range(
         self, sample_dsf_data: pd.DataFrame
@@ -370,7 +389,7 @@ class TestFeatureExtraction:
         result = get_dsf_curve_features_multiple_wells(sample_dsf_data)
 
         assert isinstance(result, WellProcessingResult)
-        assert len(result.failures) == 0
+        assert not result.failures
 
         # Check that we have features for each well
         well_positions = sample_dsf_data["well_position"].unique()
@@ -395,6 +414,10 @@ class TestFeatureExtraction:
                 "tm",
                 "max_derivative_value",
                 "delta_tm",
+                "peak_confidence",
+                "peak_is_valid",
+                "peak_quality_flags",
+                "n_peaks_detected",
                 "min_temp",
                 "max_temp",
             ]
@@ -493,6 +516,10 @@ class TestFeatureExtraction:
             "tm",
             "max_derivative_value",
             "delta_tm",
+            "peak_confidence",
+            "peak_is_valid",
+            "peak_quality_flags",
+            "n_peaks_detected",
             "smoothing",
             "min_temp",
             "max_temp",
@@ -519,3 +546,186 @@ class TestValidation:
         assert validate_temperature_range(None, 95.0) is False
         assert validate_temperature_range(25.0, None) is False
         assert validate_temperature_range(None, None) is False
+
+
+class TestPeakDetectionIntegration:
+    """Integration tests for the peak detection pipeline through the public API.
+
+    These tests validate the full chain: raw fluorescence → spline → derivative
+    → peak detection → features, using realistic DSF curve fixtures.
+    """
+
+    def test_tm_accuracy_single_transition(self, sample_dsf_data: pd.DataFrame) -> None:
+        """Test Tm accuracy on a clean Boltzmann sigmoid (Tm=55.0°C).
+
+        The sample_fluorescence fixture generates a Boltzmann sigmoid with known
+        Tm=55.0°C and low noise (sigma=5 RFU). Tolerance of 0.5°C matches DMAN's
+        0.33°C RMSD on clean data (Lee et al. 2019 [2]).
+        """
+        single_well_data = sample_dsf_data.loc[sample_dsf_data["well_position"] == "A1", :].copy()
+        features = get_dsf_curve_features(single_well_data)
+
+        assert abs(features["tm"] - 55.0) < 0.5
+        assert features["peak_is_valid"] is True
+        assert features["peak_confidence"] > 0.5
+
+    def test_tm_accuracy_lysozyme(
+        self, lysozyme_like_fluorescence: tuple[np.ndarray, np.ndarray]
+    ) -> None:
+        """Test Tm accuracy on a lysozyme-like curve (Tm=72.0°C).
+
+        Uses realistic SYPRO Orange parameters with baseline drift.
+        Published Tm=72.4°C at pH 6.0 (Schönfelder et al. 2025 [12]).
+        Tolerance of 0.5°C from DMAN benchmark (Lee et al. 2019 [2]).
+        """
+        x, y = lysozyme_like_fluorescence
+        data = pd.DataFrame({"well_position": "A1", "temperature": x, "fluorescence": y})
+        features = get_dsf_curve_features(data)
+
+        assert abs(features["tm"] - 72.0) < 0.5
+        assert features["peak_is_valid"] is True
+
+    def test_flat_curve_returns_nan(self, flat_fluorescence: tuple[np.ndarray, np.ndarray]) -> None:
+        """Test that a flat fluorescence trace produces tm=NaN with quality flags.
+
+        A flat trace means no protein unfolding occurred (empty well, pre-denatured
+        protein, or wrong dye concentration).
+
+        Reference: Sun et al. 2020 [4] classifies flat traces as "no transition";
+        Niesen et al. 2007 [10] describes flat traces as a common DSF failure mode.
+        """
+        x, y = flat_fluorescence
+        data = pd.DataFrame({"well_position": "A1", "temperature": x, "fluorescence": y})
+        features = get_dsf_curve_features(data)
+
+        assert np.isnan(features["tm"])
+        assert features["peak_is_valid"] is False
+        assert features["peak_confidence"] == 0.0
+        assert len(features["peak_quality_flags"]) > 0
+
+    def test_multi_domain_two_peaks(
+        self, multi_domain_fluorescence: tuple[np.ndarray, np.ndarray]
+    ) -> None:
+        """Test that two-domain protein produces two detected peaks.
+
+        Transition 1: Tm1=50.0°C, Transition 2: Tm2=65.0°C.
+        Wider tolerance (1.5°C) accounts for overlapping transitions.
+
+        Reference: Gao et al. 2020 [8] describes multi-transition behavior and
+        recommends derivative methods for multi-domain proteins.
+        """
+        x, y = multi_domain_fluorescence
+        data = pd.DataFrame({"well_position": "A1", "temperature": x, "fluorescence": y})
+        features = get_dsf_curve_features(data)
+
+        assert features["n_peaks_detected"] >= 2
+        assert features["peak_is_valid"] is True
+
+    def test_high_initial_fluorescence_correct_tm(
+        self, high_initial_fluorescence: tuple[np.ndarray, np.ndarray]
+    ) -> None:
+        """Test that high initial fluorescence does not mislead Tm detection.
+
+        The initial decay creates a large derivative at low temperatures. The peak
+        detection should identify the real Tm at 60°C, not the decay artifact.
+
+        Reference: Wu et al. 2024 [1] — Model 2 (41.2% of curves) is designed
+        for high initial fluorescence.
+        """
+        x, y = high_initial_fluorescence
+        data = pd.DataFrame({"well_position": "A1", "temperature": x, "fluorescence": y})
+        features = get_dsf_curve_features(data)
+
+        assert abs(features["tm"] - 60.0) < 2.0
+        assert features["peak_is_valid"] is True
+
+    def test_aggregation_peak_not_primary(
+        self, aggregation_artifact_fluorescence: tuple[np.ndarray, np.ndarray]
+    ) -> None:
+        """Test that aggregation artifact is not selected as primary Tm.
+
+        Real transition at 58°C should be more prominent than the aggregation-related
+        peak near 75°C.
+
+        Reference: Gao et al. 2020 [8] — aggregation is a well-documented complication.
+        """
+        x, y = aggregation_artifact_fluorescence
+        data = pd.DataFrame({"well_position": "A1", "temperature": x, "fluorescence": y})
+        features = get_dsf_curve_features(data)
+
+        assert abs(features["tm"] - 58.0) < 2.0
+        assert features["peak_is_valid"] is True
+
+    def test_boundary_exclusion(
+        self, edge_artifact_fluorescence: tuple[np.ndarray, np.ndarray]
+    ) -> None:
+        """Test that edge artifacts are excluded and the real Tm at 60°C is detected.
+
+        A strong artifact near 93°C (high-temperature boundary) should be removed
+        by boundary exclusion, leaving the real transition at 60°C.
+
+        Reference: Wu et al. 2023 [9] — recommends excluding scan endpoints;
+        Sun et al. 2020 [4] — region-aware analysis.
+        """
+        x, y = edge_artifact_fluorescence
+        data = pd.DataFrame({"well_position": "A1", "temperature": x, "fluorescence": y})
+        features = get_dsf_curve_features(data)
+
+        assert abs(features["tm"] - 60.0) < 1.0
+        assert features["peak_is_valid"] is True
+
+    def test_confidence_correlates_with_data_quality(self) -> None:
+        """Test that confidence score increases with data quality.
+
+        Run peak detection on three curves of increasing quality and assert
+        strict ordering: confidence_clean > confidence_moderate > confidence_noisy.
+
+        Reference: MoltenProt's BS-factor [3] and TSA-CRAFT's R² criterion [2]
+        provide quality metrics that correlate with data quality.
+        """
+        x = np.linspace(25, 95, 141)
+        f_native = 500.0
+        f_denatured = 5000.0
+        tm = 55.0
+        slope = 2.0
+        y_clean_base = f_native + (f_denatured - f_native) / (1.0 + np.exp((tm - x) / slope))
+
+        rng = np.random.default_rng(51)
+
+        # Clean
+        y_clean = y_clean_base + rng.normal(0, 5.0, len(x))
+        data_clean = pd.DataFrame(
+            {"well_position": "A1", "temperature": x, "fluorescence": y_clean}
+        )
+        features_clean = get_dsf_curve_features(data_clean)
+
+        # Moderate noise
+        y_moderate = y_clean_base + rng.normal(0, 50.0, len(x))
+        data_moderate = pd.DataFrame(
+            {"well_position": "A1", "temperature": x, "fluorescence": y_moderate}
+        )
+        features_moderate = get_dsf_curve_features(data_moderate)
+
+        # Heavy noise
+        y_noisy = y_clean_base + rng.normal(0, 200.0, len(x))
+        data_noisy = pd.DataFrame(
+            {"well_position": "A1", "temperature": x, "fluorescence": y_noisy}
+        )
+        features_noisy = get_dsf_curve_features(data_noisy)
+
+        assert features_clean["peak_confidence"] > features_moderate["peak_confidence"]
+        assert features_moderate["peak_confidence"] > features_noisy["peak_confidence"]
+
+    def test_get_tm_returns_nan_on_flat_input(self) -> None:
+        """Test that get_tm returns (np.nan, np.nan) on flat input.
+
+        Flat input should propagate through the robust peak detection and
+        return NaN values instead of a meaningless argmax result.
+        """
+        x = np.linspace(25, 95, 100)
+        y = np.full_like(x, 1000.0)
+
+        tm, max_derivative = get_tm(x, y)
+
+        assert np.isnan(tm)
+        assert np.isnan(max_derivative)

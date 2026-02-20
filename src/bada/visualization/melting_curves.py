@@ -92,7 +92,7 @@ def create_melt_curve_plot(
         fig = _create_raw_only_figure(full_well_data)
 
     # add temperature indicators independently
-    if tm is not None:
+    if tm is not None and not np.isnan(tm):
         fig = _add_tm_indicator(fig, tm)
 
     if show_temp_range:

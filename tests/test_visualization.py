@@ -42,7 +42,7 @@ class TestHeatmap:
         )
 
         # Check that the figure has one trace
-        assert len(fig.data) > 0  # type: ignore
+        assert fig.data  # type: ignore
 
         # Check that the trace is a heatmap
         trace = cast(go.Heatmap, fig.data[0])
@@ -258,7 +258,7 @@ class TestMeltingCurves:
 
         assert isinstance(fig_with_tm, go.Figure)
         # Should have added a shape (vertical line)
-        assert len(fig_with_tm.layout.shapes) > 0  # type: ignore
+        assert fig_with_tm.layout.shapes  # type: ignore
 
         # The first shape should be a vertical line at the Tm position
         shape = fig_with_tm.layout.shapes[0]  # type: ignore
