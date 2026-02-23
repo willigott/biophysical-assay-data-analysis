@@ -4,6 +4,13 @@ from bada.processing.feature_extraction import (
     get_dsf_curve_features,
     get_dsf_curve_features_multiple_wells,
 )
+from bada.processing.model_fitting import (
+    ModelFitResult,
+    ModelFittingConfig,
+    TmMethod,
+    evaluate_fit_result,
+    fit_dsf_models,
+)
 from bada.processing.peak_detection import (
     PeakDetectionConfig,
     PeakDetectionResult,

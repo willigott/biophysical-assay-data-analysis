@@ -6,6 +6,13 @@ import numpy as np
 import pandas as pd
 from scipy.interpolate import BSpline
 
+from bada.processing.model_fitting import (
+    ModelFitResult,
+    ModelFittingConfig,
+    TmMethod,
+    evaluate_fit_result,
+    fit_dsf_models,
+)
 from bada.processing.peak_detection import PeakDetectionConfig, detect_melting_peaks
 from bada.processing.preprocessing import SplineResult, get_spline, get_spline_derivative
 from bada.utils.validation import validate_temperature_range
@@ -16,7 +23,7 @@ logger = logging.getLogger(__name__)
 class DSFCurveFeatures(TypedDict):
     """Features extracted from a single DSF melting curve.
 
-    Returned by get_dsf_curve_features(). Keys fall into four groups:
+    Returned by get_dsf_curve_features(). Keys fall into five groups:
 
     Raw/fitted data:
         full_well_data: Complete raw well data (unfiltered).
@@ -41,6 +48,17 @@ class DSFCurveFeatures(TypedDict):
             "flat_derivative", "too_many_peaks").
         n_peaks_detected: Number of valid peaks detected after filtering.
 
+    Model fitting (populated when tm_method != "derivative"):
+        tm_method_used: Which Tm method was actually used ("derivative", "model_1", etc.).
+        selected_model: Which parametric model was selected (None for derivative method).
+        bic_values: BIC values per model (None for derivative method).
+        model_r_squared: R-squared of model fit (None for derivative method).
+        tm_secondary: Secondary Tm from two-sigmoid models (None otherwise).
+        model_fit_x: Temperature grid for model overlay (°C), None for derivative method.
+        model_fit_y: Full model prediction (RFU), None for derivative method.
+        model_component_curves: Individual component curves (RFU contributions),
+            None for derivative method.
+
     Analysis parameters:
         smoothing: Smoothing parameter used for spline fitting.
         min_temp: Lower bound of temperature analysis range.
@@ -63,6 +81,14 @@ class DSFCurveFeatures(TypedDict):
     peak_is_valid: bool
     peak_quality_flags: list[str]
     n_peaks_detected: int
+    tm_method_used: str
+    selected_model: str | None
+    bic_values: dict[str, float] | None
+    model_r_squared: float | None
+    tm_secondary: float | None
+    model_fit_x: np.ndarray | None
+    model_fit_y: np.ndarray | None
+    model_component_curves: dict[str, np.ndarray] | None
     smoothing: float
     min_temp: float
     max_temp: float
@@ -172,6 +198,8 @@ def get_dsf_curve_features(
     smoothing: float = 0.01,
     avg_control_tm: float | None = None,
     peak_detection_config: PeakDetectionConfig | None = None,
+    tm_method: TmMethod | str = "derivative",
+    model_fitting_config: ModelFittingConfig | None = None,
 ) -> DSFCurveFeatures:
     """
     Analyze the data for a single well.
@@ -184,6 +212,12 @@ def get_dsf_curve_features(
         avg_control_tm (float, optional): Average Tm of control wells
         peak_detection_config (PeakDetectionConfig, optional): Configuration for peak
             detection. Uses defaults if None.
+        tm_method (TmMethod | str, default="derivative"): Which Tm detection strategy
+            to use. "derivative" uses the existing B-spline derivative pipeline.
+            "auto" fits all 4 DSFworld parametric models and selects by BIC.
+            "model_1" through "model_4" fit a specific model.
+        model_fitting_config (ModelFittingConfig, optional): Configuration for
+            multi-model fitting. Uses defaults if None. Ignored when tm_method="derivative".
 
     Returns:
         dict: Dictionary containing analysis results
@@ -199,7 +233,6 @@ def get_dsf_curve_features(
         np.asarray(data["temperature"]), np.asarray(data["fluorescence"]), smoothing=smoothing
     )
 
-    filtered_data = data.copy().reset_index(drop=True)
     if min_temp is None:
         min_temp = float(data["temperature"].min())
     if max_temp is None:
@@ -220,8 +253,53 @@ def get_dsf_curve_features(
 
     peak_result = detect_melting_peaks(x_spline, y_spline_derivative, config=peak_detection_config)
 
-    temp_at_max_derivative = peak_result.tm
-    max_derivative_value = peak_result.max_derivative_value
+    # Resolve tm_method string to enum
+    if isinstance(tm_method, str):
+        tm_method_enum = TmMethod(tm_method)
+    else:
+        tm_method_enum = tm_method
+
+    # Model fitting fields (populated only for parametric methods)
+    model_fit_result: ModelFitResult | None = None
+    tm_method_used: str = "derivative"
+    selected_model: str | None = None
+    bic_values: dict[str, float] | None = None
+    model_r_squared: float | None = None
+    tm_secondary: float | None = None
+    model_fit_x: np.ndarray | None = None
+    model_fit_y: np.ndarray | None = None
+    model_component_curves: dict[str, np.ndarray] | None = None
+
+    if tm_method_enum != TmMethod.DERIVATIVE:
+        temperature_arr = np.asarray(filtered_data["temperature"])
+        fluorescence_arr = np.asarray(filtered_data["fluorescence"])
+
+        model_fit_result = fit_dsf_models(
+            temperature_arr,
+            fluorescence_arr,
+            tm_method=tm_method_enum,
+            config=model_fitting_config,
+            peak_detection_config=peak_detection_config,
+        )
+
+        tm_method_used = model_fit_result.selected_model
+        selected_model = model_fit_result.selected_model
+        bic_values = model_fit_result.bic_values
+        model_r_squared = model_fit_result.r_squared
+        tm_secondary = model_fit_result.tm_secondary
+
+        if model_fit_result.is_valid:
+            model_fit_x, model_fit_y, model_component_curves = evaluate_fit_result(
+                model_fit_result, temperature_arr, fluorescence_arr
+            )
+
+    # Determine Tm and max_derivative_value
+    if model_fit_result is not None and model_fit_result.is_valid:
+        temp_at_max_derivative = model_fit_result.tm
+        max_derivative_value = model_fit_result.max_derivative_value
+    else:
+        temp_at_max_derivative = peak_result.tm
+        max_derivative_value = peak_result.max_derivative_value
 
     if avg_control_tm is not None:
         delta_tm = temp_at_max_derivative - avg_control_tm
@@ -245,6 +323,14 @@ def get_dsf_curve_features(
         "peak_is_valid": peak_result.is_valid,
         "peak_quality_flags": peak_result.quality_flags,
         "n_peaks_detected": peak_result.n_peaks_found,
+        "tm_method_used": tm_method_used,
+        "selected_model": selected_model,
+        "bic_values": bic_values,
+        "model_r_squared": model_r_squared,
+        "tm_secondary": tm_secondary,
+        "model_fit_x": model_fit_x,
+        "model_fit_y": model_fit_y,
+        "model_component_curves": model_component_curves,
         "smoothing": smoothing,
         "min_temp": min_temp,
         "max_temp": max_temp,
@@ -259,6 +345,8 @@ def get_dsf_curve_features_multiple_wells(
     smoothing: float = 0.01,
     avg_control_tm: float | None = None,
     peak_detection_config: PeakDetectionConfig | None = None,
+    tm_method: TmMethod | str = "derivative",
+    model_fitting_config: ModelFittingConfig | None = None,
 ) -> WellProcessingResult:
     """
     Analyze the data for all wells in the dataset.
@@ -276,6 +364,10 @@ def get_dsf_curve_features_multiple_wells(
         avg_control_tm (float, optional): Average Tm of control wells
         peak_detection_config (PeakDetectionConfig, optional): Configuration for peak
             detection. Uses defaults if None.
+        tm_method (TmMethod | str, default="derivative"): Which Tm detection strategy
+            to use. Forwarded to get_dsf_curve_features().
+        model_fitting_config (ModelFittingConfig, optional): Configuration for
+            multi-model fitting. Forwarded to get_dsf_curve_features().
 
     Returns:
         WellProcessingResult: Contains .features (successful wells) and .failures (failed wells)
@@ -299,6 +391,8 @@ def get_dsf_curve_features_multiple_wells(
                 smoothing=smoothing,
                 avg_control_tm=avg_control_tm,
                 peak_detection_config=peak_detection_config,
+                tm_method=tm_method,
+                model_fitting_config=model_fitting_config,
             )
             result.features[well] = well_features
         except (ValueError, np.linalg.LinAlgError, TypeError) as e:

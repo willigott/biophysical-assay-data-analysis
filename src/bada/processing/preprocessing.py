@@ -1,7 +1,12 @@
+import logging
+import warnings
+
 from dtaidistance import dtw
 import numpy as np
 import pandas as pd
 from scipy.interpolate import BSpline, make_splrep
+
+logger = logging.getLogger(__name__)
 
 SplineResult = tuple[BSpline, np.ndarray, np.ndarray]
 
@@ -46,7 +51,11 @@ def get_spline(
     n_points: int = 1000,
 ) -> tuple[BSpline, np.ndarray, np.ndarray]:
     """Fit spline to temperature and fluorescence data"""
-    spline = make_splrep(x, y, s=smoothing)  # type: ignore
+    with warnings.catch_warnings(record=True) as caught:
+        warnings.filterwarnings("always", category=RuntimeWarning, module="scipy")
+        spline = make_splrep(x, y, s=smoothing)  # type: ignore
+    for w in caught:
+        logger.debug("Spline fitting warning (s=%.4f): %s", smoothing, w.message)
     x_spline = np.linspace(min(x), max(x), n_points)
     y_spline = np.asarray(spline(x_spline))
 

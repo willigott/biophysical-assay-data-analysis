@@ -218,6 +218,28 @@ def flat_fluorescence() -> tuple[np.ndarray, np.ndarray]:
 
 
 @pytest.fixture
+def multi_domain_with_decay_fluorescence() -> tuple[np.ndarray, np.ndarray]:
+    """Synthetic DSF curve for a two-domain protein with initial fluorescence decay.
+
+    Combines two modified Boltzmann sigmoids (Tm1=50°C, Tm2=65°C) with an exponential
+    initial fluorescence decay component. This curve type corresponds to DSFworld
+    Model 4, which accounts for 31.4% of curves in the benchmark (Wu et al. 2024 [1]).
+
+    Returns:
+        Tuple of (temperature, fluorescence) arrays.
+    """
+    rng = np.random.default_rng(49)
+    x = np.linspace(25, 95, 141)
+    y = 400.0
+    y = y + _boltzmann_sigmoid(x, f_native=0.0, f_denatured=2000.0, tm=50.0, slope=2.5)
+    y = y + _boltzmann_sigmoid(x, f_native=0.0, f_denatured=3000.0, tm=65.0, slope=2.0)
+    # Initial fluorescence decay
+    y = y + 2500.0 * np.exp(-0.06 * (x - 25.0))
+    y = y + rng.normal(0, 10.0, len(x))
+    return x, y
+
+
+@pytest.fixture
 def edge_artifact_fluorescence() -> tuple[np.ndarray, np.ndarray]:
     """DSF curve with a strong artifact at the high-temperature boundary.
 

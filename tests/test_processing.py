@@ -301,6 +301,14 @@ class TestFeatureExtraction:
             "peak_is_valid",
             "peak_quality_flags",
             "n_peaks_detected",
+            "tm_method_used",
+            "selected_model",
+            "bic_values",
+            "model_r_squared",
+            "tm_secondary",
+            "model_fit_x",
+            "model_fit_y",
+            "model_component_curves",
             "smoothing",
             "min_temp",
             "max_temp",
@@ -418,6 +426,14 @@ class TestFeatureExtraction:
                 "peak_is_valid",
                 "peak_quality_flags",
                 "n_peaks_detected",
+                "tm_method_used",
+                "selected_model",
+                "bic_values",
+                "model_r_squared",
+                "tm_secondary",
+                "model_fit_x",
+                "model_fit_y",
+                "model_component_curves",
                 "min_temp",
                 "max_temp",
             ]
@@ -520,6 +536,14 @@ class TestFeatureExtraction:
             "peak_is_valid",
             "peak_quality_flags",
             "n_peaks_detected",
+            "tm_method_used",
+            "selected_model",
+            "bic_values",
+            "model_r_squared",
+            "tm_secondary",
+            "model_fit_x",
+            "model_fit_y",
+            "model_component_curves",
             "smoothing",
             "min_temp",
             "max_temp",
@@ -729,3 +753,61 @@ class TestPeakDetectionIntegration:
 
         assert np.isnan(tm)
         assert np.isnan(max_derivative)
+
+
+class TestTmMethodIntegration:
+    """Tests for tm_method parameter in get_dsf_curve_features.
+
+    Validates backward compatibility (default derivative method unchanged)
+    and correct routing to multi-model fitting when requested.
+    """
+
+    def test_default_tm_method_is_derivative(self, sample_dsf_data: pd.DataFrame) -> None:
+        """Default tm_method='derivative' should produce identical results to previous API.
+
+        This is the critical backward compatibility test: existing users who do not
+        pass tm_method should see no change in behavior.
+        """
+        single_well = sample_dsf_data.loc[sample_dsf_data["well_position"] == "A1", :].copy()
+        features = get_dsf_curve_features(single_well)
+
+        assert features["tm_method_used"] == "derivative"
+        assert features["selected_model"] is None
+        assert features["bic_values"] is None
+        assert features["model_r_squared"] is None
+        assert features["tm_secondary"] is None
+
+    def test_derivative_method_tm_unchanged(self, sample_dsf_data: pd.DataFrame) -> None:
+        """Derivative method Tm should be identical whether tm_method is passed or not."""
+        single_well = sample_dsf_data.loc[sample_dsf_data["well_position"] == "A1", :].copy()
+
+        features_default = get_dsf_curve_features(single_well)
+        features_explicit = get_dsf_curve_features(single_well, tm_method="derivative")
+
+        assert features_default["tm"] == features_explicit["tm"]
+        assert features_default["max_derivative_value"] == features_explicit["max_derivative_value"]
+
+    def test_auto_method_produces_model_fields(self, sample_dsf_data: pd.DataFrame) -> None:
+        """Auto method should populate model fitting fields."""
+        single_well = sample_dsf_data.loc[sample_dsf_data["well_position"] == "A1", :].copy()
+        features = get_dsf_curve_features(single_well, tm_method="auto")
+
+        assert features["tm_method_used"] != "derivative"
+        assert features["selected_model"] is not None
+        assert features["bic_values"] is not None
+        assert features["model_r_squared"] is not None
+
+    def test_auto_method_tm_accuracy(self, sample_dsf_data: pd.DataFrame) -> None:
+        """Auto method should detect Tm near 55°C on the standard Boltzmann fixture."""
+        single_well = sample_dsf_data.loc[sample_dsf_data["well_position"] == "A1", :].copy()
+        features = get_dsf_curve_features(single_well, tm_method="auto")
+
+        assert abs(features["tm"] - 55.0) < 2.0
+
+    def test_multiple_wells_with_tm_method(self, sample_dsf_data: pd.DataFrame) -> None:
+        """get_dsf_curve_features_multiple_wells should forward tm_method correctly."""
+        result = get_dsf_curve_features_multiple_wells(sample_dsf_data, tm_method="auto")
+
+        for well, features in result.features.items():
+            assert features["selected_model"] is not None
+            assert features["bic_values"] is not None

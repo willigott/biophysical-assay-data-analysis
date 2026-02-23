@@ -7,6 +7,7 @@ import plotly.graph_objects as go
 from bada.visualization.heatmap import create_heatmap_plot
 from bada.visualization.melting_curves import (
     PlotType,
+    _add_model_overlay,
     _add_temperature_range_indicators,
     _add_tm_indicator,
     _create_derivative_subplot_figure,
@@ -289,6 +290,10 @@ class TestMeltingCurves:
             "tm": 65.0,
             "min_temp": 30.0,
             "max_temp": 90.0,
+            "model_fit_x": None,
+            "model_fit_y": None,
+            "model_component_curves": None,
+            "selected_model": None,
         }
 
         fig = create_melt_curve_plot_from_features(features)  # type: ignore[arg-type]
@@ -299,3 +304,82 @@ class TestMeltingCurves:
         # Verify that data and shapes exist
         assert hasattr(fig, "data")
         assert hasattr(fig.layout, "shapes")
+
+    def test_create_melt_curve_plot_with_model_overlay(
+        self, sample_dsf_data: pd.DataFrame, sample_spline_x: np.ndarray
+    ) -> None:
+        """Test that model fit overlay adds traces to the fluorescence subplot."""
+        x_spline = sample_spline_x
+        rng = np.random.default_rng(60)
+        y_spline = rng.random(len(x_spline))
+        y_spline_derivative = rng.random(len(x_spline))
+
+        model_fit_x = np.linspace(25, 95, 100)
+        model_fit_y = rng.random(100) * 5000
+        model_component_curves = {
+            "sigmoid_1": rng.random(100) * 3000,
+            "initial_decay": rng.random(100) * 2000,
+        }
+
+        fig = create_melt_curve_plot(
+            sample_dsf_data,
+            x_spline=x_spline,
+            y_spline=y_spline,
+            y_spline_derivative=y_spline_derivative,
+            model_fit_x=model_fit_x,
+            model_fit_y=model_fit_y,
+            model_component_curves=model_component_curves,
+            selected_model="model_2",
+        )
+
+        assert isinstance(fig, go.Figure)
+        # 3 base traces (raw, spline, derivative) + 3 model traces (fit, sigmoid, decay)
+        assert len(fig.data) == 6  # type: ignore[arg-type]
+
+    def test_add_model_overlay_no_components(self, sample_dsf_data: pd.DataFrame) -> None:
+        """Test that _add_model_overlay works without component curves."""
+        fig = _create_raw_only_figure(sample_dsf_data)
+        model_fit_x = np.linspace(25, 95, 50)
+        rng = np.random.default_rng(61)
+        model_fit_y = rng.random(50) * 5000
+
+        fig = _add_model_overlay(
+            fig,
+            model_fit_x,
+            model_fit_y,
+            model_component_curves=None,
+            selected_model="model_1",
+            is_subplot=False,
+        )
+
+        # 1 raw trace + 1 model fit trace
+        assert len(fig.data) == 2  # type: ignore[arg-type]
+        assert fig.data[1].name == "Fit (model_1)"  # type: ignore[union-attr]
+
+    def test_create_melt_curve_plot_from_features_with_model(
+        self, sample_dsf_data: pd.DataFrame
+    ) -> None:
+        """Test that create_melt_curve_plot_from_features includes model overlay."""
+        rng = np.random.default_rng(62)
+        model_fit_x = np.linspace(25, 95, 100)
+        features = {
+            "full_well_data": sample_dsf_data,
+            "x_spline": np.linspace(25, 95, 100),
+            "y_spline": rng.random(100),
+            "y_spline_derivative": rng.random(100),
+            "tm": 55.0,
+            "min_temp": 25.0,
+            "max_temp": 95.0,
+            "model_fit_x": model_fit_x,
+            "model_fit_y": rng.random(100) * 5000,
+            "model_component_curves": {
+                "sigmoid_1": rng.random(100) * 3000,
+            },
+            "selected_model": "model_1",
+        }
+
+        fig = create_melt_curve_plot_from_features(features)  # type: ignore[arg-type]
+
+        assert isinstance(fig, go.Figure)
+        # 3 base traces + 2 model traces (fit + sigmoid_1)
+        assert len(fig.data) == 5  # type: ignore[arg-type]

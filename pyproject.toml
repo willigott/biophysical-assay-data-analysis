@@ -29,6 +29,7 @@ dev = [
     "ruff>=0.9.9",
     "pre-commit>=4.1.0",
     "jupytext>=1.17.2",
+    "marimo>=0.20.1",
 ]
 docs = [
     "sphinx>=7.0",
@@ -44,6 +45,11 @@ name = "testpypi"
 url = "https://test.pypi.org/simple/"
 publish-url = "https://test.pypi.org/legacy/"
 explicit = true
+
+[tool.pytest.ini_options]
+markers = [
+    "slow: marks tests as slow (deselect with '-m \"not slow\"')",
+]
 
 [tool.pyright]
 include = ["src", "tests"]
