@@ -16,7 +16,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/setup
-      - run: uvx ruff check .
+      - run: uv run ruff check .
 
   formatting:
     runs-on: ubuntu-latest
@@ -24,7 +24,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/setup
-      - run: uvx ruff format --check .
+      - run: uv run ruff format --check .
 
   type-checking:
     runs-on: ubuntu-latest
@@ -39,7 +39,7 @@ jobs:
     needs: [lock-file]
     strategy:
       matrix:
-        python-version: ['3.11', '3.12', '3.13']
+        python-version: ['3.12', '3.13']
         os: [ubuntu-latest]
     steps:
       - uses: actions/checkout@v4

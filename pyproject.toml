@@ -1,6 +1,6 @@
 [project]
 name = "bada"
-version = "0.1.1"
+version = "0.1.2"
 description = "Package for analysis of biophysical assays, such as DSF"
 readme = "README.md"
 authors = [
@@ -22,11 +22,11 @@ build-backend = "hatchling.build"
 
 [dependency-groups]
 dev = [
-    "pyright>=1.1.396",
+    "pyright>=1.1.408",
     "pytest-cov>=6.0.0",
     "pytest-mock>=3.14.0",
     "pytest>=8.3.5",
-    "ruff>=0.9.9",
+    "ruff>=0.15.4",
     "pre-commit>=4.1.0",
     "jupytext>=1.17.2",
     "marimo>=0.20.1",
