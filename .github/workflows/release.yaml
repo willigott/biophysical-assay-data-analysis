@@ -37,7 +37,8 @@ jobs:
           path: dist/
       - name: Verify package installs correctly
         run: |
-          uv pip install --system dist/*.whl
-          python -c "import bada; print(f'Successfully installed bada {bada.__version__}')"
+          uv venv /tmp/test-env
+          uv pip install --python /tmp/test-env/bin/python dist/*.whl
+          /tmp/test-env/bin/python -c "import bada; print(f'Successfully installed bada {bada.__version__}')"
       - name: Publish to PyPI
         run: uv publish dist/*
