@@ -14,7 +14,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 project = "bada"
 copyright = "2025, Willi Gottstein"
 author = "Willi Gottstein"
-release = "0.1.3"
+release = "0.1.2"
 
 # -- General configuration ---------------------------------------------------
 extensions = [

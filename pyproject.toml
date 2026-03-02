@@ -1,6 +1,6 @@
 [project]
 name = "bada"
-version = "0.1.3"
+version = "0.1.2"
 description = "Package for analysis of biophysical assays, such as DSF"
 readme = "README.md"
 authors = [

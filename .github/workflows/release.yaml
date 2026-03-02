@@ -19,30 +19,9 @@ jobs:
           path: dist/
           retention-days: 7
 
-  publish-testpypi:
-    name: Publish to TestPyPI
-    needs: [build]
-    # Only run when a release is published
-    if: ${{ github.event_name == 'release' && github.event.action == 'published' }}
-    runs-on: ubuntu-latest
-    environment: release-testpypi
-    permissions:
-      id-token: write  # Required for trusted publishing
-    steps:
-      - uses: actions/checkout@v4
-      - uses: ./.github/actions/setup
-      - name: Download built package
-        uses: actions/download-artifact@v4
-        with:
-          name: dist
-          path: dist/
-      - name: Publish to TestPyPI
-        run: uv publish --index testpypi dist/*
-
   publish-pypi:
     name: Publish to PyPI
-    needs: [publish-testpypi]
-    # Only run when a release is published
+    needs: [build]
     if: ${{ github.event_name == 'release' && github.event.action == 'published' }}
     runs-on: ubuntu-latest
     environment: release-pypi
@@ -51,18 +30,14 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/setup
-      - name: Test installation from TestPyPI
-        run: |
-          uv pip install --system \
-            --extra-index-url https://test.pypi.org/simple/ \
-            --index-strategy unsafe-best-match \
-            --refresh-package bada \
-            "bada==${GITHUB_REF_NAME}"
-          python -c "import bada; print(f'Successfully installed bada {bada.__version__}')"
       - name: Download built package
         uses: actions/download-artifact@v4
         with:
           name: dist
           path: dist/
+      - name: Verify package installs correctly
+        run: |
+          uv pip install --system dist/*.whl
+          python -c "import bada; print(f'Successfully installed bada {bada.__version__}')"
       - name: Publish to PyPI
         run: uv publish dist/*
