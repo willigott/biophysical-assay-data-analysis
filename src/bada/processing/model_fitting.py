@@ -67,6 +67,15 @@ TM_EXTRACTION_GRID_POINTS = 1000
 # Reference: analysis.R, make_peak_finder_nest() line 287
 TM2_OFFSET_NORMALIZED = 0.05
 
+# --- Minimum Tm separation for two-sigmoid models ---
+# Two-domain proteins typically have Tms separated by >= 10 C (e.g., BSA domains
+# Tm1 ~ 56 C, Tm2 ~ 70 C). When BIC selects a two-sigmoid model but the two
+# extracted Tms are closer than this threshold, the second sigmoid is likely
+# absorbing post-transition fluorescence decay rather than capturing a real
+# transition. In that case, fall back to the corresponding single-sigmoid model.
+# Reference: Niesen et al. 2007, Nature Protocols 2(9), 2212-2221.
+MIN_TM_SEPARATION_CELSIUS = 8.0
+
 
 class TmMethod(str, Enum):
     """Method for melting temperature determination.
@@ -339,6 +348,7 @@ def _compute_bic(n_points: int, rss: float, n_params: int) -> float:
 def _estimate_starting_parameters(
     t_norm: np.ndarray,
     f_norm: np.ndarray,
+    t_range: float,
     peak_detection_config: PeakDetectionConfig | None = None,
 ) -> dict[str, float]:
     """Estimate starting parameters for curve fitting from derivative peak locations.
@@ -351,6 +361,8 @@ def _estimate_starting_parameters(
     Args:
         t_norm: Normalized temperature array.
         f_norm: Normalized fluorescence array.
+        t_range: Original temperature range in degrees Celsius (t_max - t_min).
+            Used to scale the min_width_celsius threshold to normalized units.
         peak_detection_config: Configuration for peak detection.
 
     Returns:
@@ -359,11 +371,27 @@ def _estimate_starting_parameters(
             "tm2": Second peak location (normalized), or tm1 + offset if only one peak.
             "c": Starting fluorescence value (f_norm[0]).
     """
+    # Scale peak detection config to normalized [0, 1] domain.
+    # min_width_celsius is in degrees Celsius; dividing by t_range converts
+    # it to the same units as the normalized temperature axis.
+    base_config = peak_detection_config or PeakDetectionConfig()
+    if t_range > 0:
+        normalized_width = base_config.min_width_celsius / t_range
+    else:
+        normalized_width = base_config.min_width_celsius
+    config_for_normalized = PeakDetectionConfig(
+        boundary_margin_fraction=base_config.boundary_margin_fraction,
+        min_prominence_factor=base_config.min_prominence_factor,
+        min_width_celsius=normalized_width,
+        min_height_fraction=base_config.min_height_fraction,
+        max_peaks_before_flagging=base_config.max_peaks_before_flagging,
+    )
+
     # Fit a spline to normalized data and get derivative for peak detection
     spline, x_spline, _y_spline = get_spline(t_norm, f_norm, smoothing=0.01)
     y_derivative = get_spline_derivative(spline, x_spline)
 
-    peak_result = detect_melting_peaks(x_spline, y_derivative, config=peak_detection_config)
+    peak_result = detect_melting_peaks(x_spline, y_derivative, config=config_for_normalized)
 
     if peak_result.n_peaks_found == 0:
         # Fallback: use midpoint
@@ -671,6 +699,13 @@ MODEL_FUNCTIONS = {
 
 ALL_MODEL_NAMES = ["model_1", "model_2", "model_3", "model_4"]
 
+# Mapping from two-sigmoid models to their single-sigmoid counterparts.
+# Used when the minimum Tm separation check rejects a two-sigmoid solution.
+_TWO_TO_SINGLE_SIGMOID_FALLBACK: dict[str, str] = {
+    "model_3": "model_1",  # two sigmoids → single sigmoid
+    "model_4": "model_2",  # two sigmoids + decay → single sigmoid + decay
+}
+
 
 def _extract_tms_from_components(
     t_norm: np.ndarray,
@@ -752,7 +787,8 @@ def fit_dsf_models(
         return _handle_all_models_failed(temp_arr, fluor_arr, config, peak_detection_config, {})
 
     # Step 2: Estimate starting parameters
-    starts = _estimate_starting_parameters(t_norm, f_norm, peak_detection_config)
+    t_range = t_max - t_min
+    starts = _estimate_starting_parameters(t_norm, f_norm, t_range, peak_detection_config)
 
     # Step 3: Determine which models to fit
     if tm_method == TmMethod.AUTO:
@@ -796,6 +832,25 @@ def fit_dsf_models(
     tm_real, max_deriv, tm_secondary = _extract_tms_from_components(
         t_norm, components, t_min, t_max
     )
+
+    # Step 7b: Reject two-sigmoid models with insufficient Tm separation.
+    # When the two extracted Tms are closer than MIN_TM_SEPARATION_CELSIUS,
+    # the second sigmoid is likely absorbing post-transition behavior rather
+    # than representing a genuine second unfolding transition. Fall back to
+    # the corresponding single-sigmoid model if it converged.
+    if (
+        tm_secondary is not None
+        and abs(tm_real - tm_secondary) < MIN_TM_SEPARATION_CELSIUS
+        and selected_model in _TWO_TO_SINGLE_SIGMOID_FALLBACK
+    ):
+        fallback_model = _TWO_TO_SINGLE_SIGMOID_FALLBACK[selected_model]
+        if fallback_model in fit_results:
+            selected_model = fallback_model
+            selected_params, _ = fit_results[selected_model]
+            components = _decompose_model(t_norm, selected_model, selected_params)
+            tm_real, max_deriv, tm_secondary = _extract_tms_from_components(
+                t_norm, components, t_min, t_max
+            )
 
     # Step 8: Compute R-squared
     model_func = MODEL_FUNCTIONS[selected_model]

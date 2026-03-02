@@ -270,8 +270,10 @@ class TestStartingParameters:
         t_norm = np.linspace(0.0, 1.0, 141)
         # Normalized Boltzmann sigmoid peaking near 0.43 (= (55-25)/(95-25))
         f_norm = 1.0 / (1.0 + np.exp((0.43 - t_norm) / 0.03))
+        # Typical DSF scan: 25-95°C = 70°C range
+        t_range = 70.0
 
-        starts = _estimate_starting_parameters(t_norm, f_norm)
+        starts = _estimate_starting_parameters(t_norm, f_norm, t_range)
 
         assert abs(starts["tm1"] - 0.43) < 0.1
         assert starts["tm2"] > starts["tm1"]
@@ -284,8 +286,9 @@ class TestStartingParameters:
         )
         # Normalize
         f_norm = (f_norm - f_norm.min()) / (f_norm.max() - f_norm.min())
+        t_range = 70.0
 
-        starts = _estimate_starting_parameters(t_norm, f_norm)
+        starts = _estimate_starting_parameters(t_norm, f_norm, t_range)
 
         assert starts["tm1"] < starts["tm2"]
 
@@ -293,8 +296,9 @@ class TestStartingParameters:
         """Flat curve should use midpoint fallback for Tm starting values."""
         t_norm = np.linspace(0.0, 1.0, 100)
         f_norm = np.full(100, 0.5)
+        t_range = 70.0
 
-        starts = _estimate_starting_parameters(t_norm, f_norm)
+        starts = _estimate_starting_parameters(t_norm, f_norm, t_range)
 
         assert starts["tm1"] == pytest.approx(0.5)
 
@@ -302,8 +306,9 @@ class TestStartingParameters:
         """Initial fluorescence amplitude C should come from f_norm[0]."""
         t_norm = np.linspace(0.0, 1.0, 100)
         f_norm = np.linspace(0.8, 0.2, 100)
+        t_range = 70.0
 
-        starts = _estimate_starting_parameters(t_norm, f_norm)
+        starts = _estimate_starting_parameters(t_norm, f_norm, t_range)
 
         assert starts["c"] == pytest.approx(0.8, abs=0.01)
 
