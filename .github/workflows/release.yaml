@@ -37,7 +37,11 @@ jobs:
           name: dist
           path: dist/
       - name: Publish to TestPyPI
-        run: uv publish --index testpypi --check-url dist/*
+        run: >
+          uv publish
+          --publish-url https://test.pypi.org/legacy/
+          --check-url https://test.pypi.org/simple/
+          dist/*
 
   publish-pypi:
     name: Publish to PyPI
