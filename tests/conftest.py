@@ -65,7 +65,7 @@ def sample_validated_dsf_data(sample_dsf_data: pd.DataFrame) -> pd.DataFrame:
 @pytest.fixture
 def sample_spline(sample_temperatures: np.ndarray, sample_fluorescence: np.ndarray) -> BSpline:
     """Sample spline for testing."""
-    return make_splrep(sample_temperatures, sample_fluorescence, s=0.01)  # type: ignore
+    return make_splrep(sample_temperatures, sample_fluorescence, s=0.01)
 
 
 @pytest.fixture

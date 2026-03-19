@@ -32,7 +32,7 @@ def convert_features_to_plate_format(
     plate_size: int,
     feature_name: str,
 ) -> tuple[np.ndarray, list[str], list[str]]:
-    """Convert DTW distances dictionary to plate format."""
+    """Convert feature data dictionary to plate format."""
     rows = get_row_labels(plate_size)
     cols = get_column_labels(plate_size, as_str=True)
 
@@ -41,6 +41,6 @@ def convert_features_to_plate_format(
     for well, features in feature_data.items():
         row_idx = rows.index(well[0])
         col_idx = int(well[1:]) - 1
-        plate_data[row_idx, col_idx] = features[feature_name]
+        plate_data[row_idx, col_idx] = features[feature_name]  # ty:ignore[invalid-key]
 
     return plate_data, [str(c) for c in cols], rows

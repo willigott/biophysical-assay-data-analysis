@@ -32,7 +32,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/setup
-      - run: uv run pyright .
+      - run: uv run ty check src/ tests/
 
   testing:
     runs-on: ubuntu-latest

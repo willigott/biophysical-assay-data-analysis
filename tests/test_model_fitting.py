@@ -678,7 +678,7 @@ class TestModelFitResult:
             r_squared=0.99,
         )
         with pytest.raises(AttributeError):
-            result.tm = 60.0  # type: ignore[misc]
+            result.tm = 60.0  # ty:ignore[invalid-assignment]
 
 
 class TestTmMethodEnum:
@@ -942,7 +942,7 @@ class TestEvaluateFitResult:
         result = fit_dsf_models(x, y, tm_method=TmMethod.MODEL_2)
 
         if not result.is_valid:
-            pytest.skip("Model 2 did not converge on this fixture")
+            pytest.skip("Model 2 did not converge on this fixture")  # ty:ignore[invalid-argument-type, too-many-positional-arguments]
 
         _x_eval, _y_fitted, components = evaluate_fit_result(result, x, y)
 

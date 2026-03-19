@@ -70,7 +70,7 @@ class TestBaseParser:
 
         # BaseParser itself cannot be instantiated (has abstract hooks)
         with pytest.raises(TypeError):
-            BaseParser(mock_file_path)  # type: ignore
+            BaseParser(mock_file_path)
 
         # Missing _read_file
         class MissingReadFile(BaseParser):
@@ -84,7 +84,7 @@ class TestBaseParser:
                 pass
 
         with pytest.raises(TypeError):
-            MissingReadFile(mock_file_path)  # type: ignore
+            MissingReadFile(mock_file_path)
 
         # Missing _validate_raw_data
         class MissingValidateRaw(BaseParser):
@@ -98,7 +98,7 @@ class TestBaseParser:
                 pass
 
         with pytest.raises(TypeError):
-            MissingValidateRaw(mock_file_path)  # type: ignore
+            MissingValidateRaw(mock_file_path)
 
         # Missing _process_raw_data
         class MissingProcessRaw(BaseParser):
@@ -112,7 +112,7 @@ class TestBaseParser:
                 pass
 
         with pytest.raises(TypeError):
-            MissingProcessRaw(mock_file_path)  # type: ignore
+            MissingProcessRaw(mock_file_path)
 
         # Missing _validate_processed_data
         class MissingValidateProcessed(BaseParser):
@@ -126,7 +126,7 @@ class TestBaseParser:
                 pass
 
         with pytest.raises(TypeError):
-            MissingValidateProcessed(mock_file_path)  # type: ignore
+            MissingValidateProcessed(mock_file_path)
 
     def test_parse_calls_hooks_in_order(self, mocker, mock_file_path: Any) -> None:
         """Test that the template method calls hooks in the correct sequence.

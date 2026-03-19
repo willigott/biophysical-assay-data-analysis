@@ -97,7 +97,7 @@ class TestPeakDetectionConfig:
         """Test that PeakDetectionConfig is immutable."""
         config = PeakDetectionConfig()
         with pytest.raises(AttributeError):
-            config.boundary_margin_fraction = 0.5  # type: ignore[misc]
+            config.boundary_margin_fraction = 0.5  # ty:ignore[invalid-assignment]
 
 
 class TestPeakDetectionResult:
@@ -118,7 +118,7 @@ class TestPeakDetectionResult:
         """Test that PeakDetectionResult is immutable."""
         result = _build_flat_result()
         with pytest.raises(AttributeError):
-            result.tm = 55.0  # type: ignore[misc]
+            result.tm = 55.0  # ty:ignore[invalid-assignment]
 
 
 class TestCharacterizeSignal:

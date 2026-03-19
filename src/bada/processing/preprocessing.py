@@ -1,3 +1,4 @@
+from collections.abc import Callable
 import logging
 import warnings
 
@@ -53,7 +54,7 @@ def get_spline(
     """Fit spline to temperature and fluorescence data"""
     with warnings.catch_warnings(record=True) as caught:
         warnings.filterwarnings("always", category=RuntimeWarning, module="scipy")
-        spline = make_splrep(x, y, s=smoothing)  # type: ignore
+        spline = make_splrep(x, y, s=smoothing)
     for w in caught:
         logger.debug("Spline fitting warning (s=%.4f): %s", smoothing, w.message)
     x_spline = np.linspace(min(x), max(x), n_points)
@@ -103,27 +104,43 @@ def get_dtw_distance(
 
 
 def get_dtw_distances_from_reference(
-    dsf: pd.DataFrame, reference_well: str, normalized: bool = True
+    dsf: pd.DataFrame,
+    reference_well: str,
+    normalized: bool = True,
+    progress_callback: Callable[[int, int], None] | None = None,
 ) -> dict[str, tuple[float, str]]:
     """
-    Calculate DTW distances from a reference well to all other wells
+    Calculate DTW distances from a reference well to all other wells.
+
+    Note: parallelization was benchmarked but provides no benefit here.
+    dtaidistance's C implementation does not release the GIL, and per-well
+    DTW computation (~1-5ms) is too fast to amortize process-spawn overhead.
+
     Args:
         dsf: DataFrame with columns ['well_position', 'temperature', 'fluorescence']
         reference_well: Well position to use as reference
         normalized: If True, normalize signals before calculating distance
+        progress_callback: Called after each well is processed with
+            (wells_completed, wells_total).
+
     Returns:
         dictionary mapping well positions to (distance, reference_well)
     """
-    wells = dsf["well_position"].unique()
+    wells = list(dsf["well_position"].unique())
+    n_total = len(wells)
     reference_signal = dsf.loc[dsf["well_position"] == reference_well, "fluorescence"].values
 
-    distances = {}
-    for well in wells:
+    distances: dict[str, tuple[float, str]] = {}
+
+    for i, well in enumerate(wells):
         if well == reference_well:
             distances[well] = (0.0, reference_well)
         else:
             signal = dsf.loc[dsf["well_position"] == well, "fluorescence"].values
             distance = get_dtw_distance(reference_signal, signal, normalized=normalized)
             distances[well] = (distance, reference_well)
+
+        if progress_callback is not None:
+            progress_callback(i + 1, n_total)
 
     return distances

@@ -98,15 +98,15 @@ def create_melt_curve_plot(
         # we know these are not None based on the inferred plot type
         fig = _create_derivative_subplot_figure(
             full_well_data,
-            x_spline,  # type: ignore
-            y_spline,  # type: ignore
-            y_spline_derivative,  # type: ignore
+            x_spline,  # ty:ignore[invalid-argument-type]
+            y_spline,  # ty:ignore[invalid-argument-type]
+            y_spline_derivative,  # ty:ignore[invalid-argument-type]
         )
     elif plot_type == PlotType.SPLINE:
         fig = _create_with_spline_figure(
             full_well_data,
-            x_spline,  # type: ignore
-            y_spline,  # type: ignore
+            x_spline,  # ty:ignore[invalid-argument-type]
+            y_spline,  # ty:ignore[invalid-argument-type]
         )
     else:  # plot_type == PlotType.RAW
         fig = _create_raw_only_figure(full_well_data)
@@ -128,7 +128,7 @@ def create_melt_curve_plot(
 
     if show_temp_range:
         # we know min_temp and max_temp are not None if show_temp_range is True
-        fig = _add_temperature_range_indicators(fig, min_temp, max_temp)  # type: ignore
+        fig = _add_temperature_range_indicators(fig, min_temp, max_temp)  # ty:ignore[invalid-argument-type]
 
     return fig
 

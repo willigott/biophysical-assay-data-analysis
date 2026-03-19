@@ -1,3 +1,4 @@
+from collections.abc import Callable
 from dataclasses import dataclass, field
 import logging
 from typing import TypedDict
@@ -223,7 +224,9 @@ def get_dsf_curve_features(
         dict: Dictionary containing analysis results
 
     Raises:
-        ValueError: If data contains more than one unique well position
+        ValueError: If data contains more than one well, or temperature range is invalid.
+        np.linalg.LinAlgError: If spline fitting fails due to singular matrix.
+        TypeError: If input data types are incompatible.
     """
 
     if n_unique := data["well_position"].nunique() != 1:
@@ -347,6 +350,7 @@ def get_dsf_curve_features_multiple_wells(
     peak_detection_config: PeakDetectionConfig | None = None,
     tm_method: TmMethod | str = "derivative",
     model_fitting_config: ModelFittingConfig | None = None,
+    progress_callback: Callable[[int, int], None] | None = None,
 ) -> WellProcessingResult:
     """
     Analyze the data for all wells in the dataset.
@@ -357,7 +361,7 @@ def get_dsf_curve_features_multiple_wells(
     Args:
         data (pd.DataFrame): Dataset containing multiple wells
         selected_wells (list[str], optional): List of wells to analyze, if None all wells are
-        analyzed
+            analyzed
         min_temp (float, optional): Minimum temperature for analysis range
         max_temp (float, optional): Maximum temperature for analysis range
         smoothing (float, default=0.01): Smoothing factor for spline fitting
@@ -368,19 +372,22 @@ def get_dsf_curve_features_multiple_wells(
             to use. Forwarded to get_dsf_curve_features().
         model_fitting_config (ModelFittingConfig, optional): Configuration for
             multi-model fitting. Forwarded to get_dsf_curve_features().
+        progress_callback (Callable[[int, int], None], optional): Called after each well
+            is processed with (wells_completed, wells_total).
 
     Returns:
         WellProcessingResult: Contains .features (successful wells) and .failures (failed wells)
     """
 
     if selected_wells is None:
-        well_positions = data["well_position"].unique()
+        well_positions = list(data["well_position"].unique())
     else:
-        well_positions = selected_wells
+        well_positions = list(selected_wells)
 
+    n_total = len(well_positions)
     result = WellProcessingResult()
 
-    for well in well_positions:
+    for i, well in enumerate(well_positions):
         well_data = data.loc[data["well_position"] == well, :].copy()
 
         try:
@@ -399,7 +406,9 @@ def get_dsf_curve_features_multiple_wells(
             result.failures[well] = e
             logger.warning("Failed to process well %s: %s", well, e)
 
-    n_total = len(well_positions)
+        if progress_callback is not None:
+            progress_callback(i + 1, n_total)
+
     n_failed = len(result.failures)
     logger.info(
         "Processed %d wells: %d succeeded, %d failed", n_total, n_total - n_failed, n_failed

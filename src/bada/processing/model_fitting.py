@@ -822,7 +822,7 @@ def fit_dsf_models(
             temperature, fluorescence, config, peak_detection_config, bic_values
         )
 
-    selected_model = min(bic_values, key=bic_values.get)  # type: ignore[arg-type]
+    selected_model = min(bic_values, key=bic_values.get)  # ty:ignore[no-matching-overload]
     selected_params, _ = fit_results[selected_model]
 
     # Step 6: Decompose into components

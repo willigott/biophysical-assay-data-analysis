@@ -811,3 +811,79 @@ class TestTmMethodIntegration:
         for well, features in result.features.items():
             assert features["selected_model"] is not None
             assert features["bic_values"] is not None
+
+
+class TestProgressCallback:
+    """Tests for progress_callback parameter.
+
+    The progress_callback enables bada-server to report per-well progress during
+    batch analysis.
+
+    Reference: bada-server's batch analysis endpoint (POST /sessions/{id}/analyze)
+    needs per-well progress for its GET /sessions/{id}/analyze/status endpoint.
+    """
+
+    def test_progress_callback_monotonic(self, sample_dsf_data: pd.DataFrame) -> None:
+        """progress_callback receives monotonically increasing (completed, total) tuples."""
+        calls: list[tuple[int, int]] = []
+        get_dsf_curve_features_multiple_wells(
+            sample_dsf_data,
+            progress_callback=lambda completed, total: calls.append((completed, total)),
+        )
+
+        n_wells = len(sample_dsf_data["well_position"].unique())
+        assert len(calls) == n_wells
+        assert calls[-1] == (n_wells, n_wells)
+        for i, (completed, total) in enumerate(calls):
+            assert completed == i + 1
+            assert total == n_wells
+
+    def test_progress_callback_with_selected_wells(self, sample_dsf_data: pd.DataFrame) -> None:
+        """progress_callback reports total based on selected_wells, not all wells."""
+        calls: list[tuple[int, int]] = []
+        get_dsf_curve_features_multiple_wells(
+            sample_dsf_data,
+            selected_wells=["A1"],
+            progress_callback=lambda completed, total: calls.append((completed, total)),
+        )
+
+        assert len(calls) == 1
+        assert calls[0] == (1, 1)
+
+    def test_progress_callback_none_is_default(self, sample_dsf_data: pd.DataFrame) -> None:
+        """Omitting progress_callback should not change behavior (backward compatibility)."""
+        result = get_dsf_curve_features_multiple_wells(sample_dsf_data)
+        n_wells = len(sample_dsf_data["well_position"].unique())
+        assert len(result.features) == n_wells
+
+    def test_dtw_progress_callback(self, sample_dsf_data: pd.DataFrame) -> None:
+        """get_dtw_distances_from_reference reports per-well progress.
+
+        Reference: DTW computation on a 384-well plate requires 383 pairwise
+        distance calculations which can take tens of seconds.
+        """
+        calls: list[tuple[int, int]] = []
+        distances = get_dtw_distances_from_reference(
+            sample_dsf_data,
+            reference_well="A1",
+            progress_callback=lambda completed, total: calls.append((completed, total)),
+        )
+
+        n_wells = len(sample_dsf_data["well_position"].unique())
+        assert len(calls) == n_wells
+        assert calls[-1] == (n_wells, n_wells)
+        assert "A1" in distances
+        assert distances["A1"][0] == 0.0
+
+    def test_dtw_progress_callback_monotonic(self, sample_dsf_data: pd.DataFrame) -> None:
+        """DTW progress_callback reports monotonically increasing completions."""
+        calls: list[tuple[int, int]] = []
+        get_dtw_distances_from_reference(
+            sample_dsf_data,
+            reference_well="A1",
+            progress_callback=lambda completed, total: calls.append((completed, total)),
+        )
+
+        for i, (completed, total) in enumerate(calls):
+            assert completed == i + 1
+            assert total == len(calls)

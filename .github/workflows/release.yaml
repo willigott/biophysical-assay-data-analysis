@@ -18,7 +18,7 @@ jobs:
           name: dist
           path: dist/
           retention-days: 7
-
+  # good to still check that the versions match, actually
   publish-pypi:
     name: Publish to PyPI
     needs: [build]
